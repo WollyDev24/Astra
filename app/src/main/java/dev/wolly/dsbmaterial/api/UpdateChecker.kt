@@ -69,7 +69,10 @@ object UpdateChecker {
         .build()
 
     private fun parseRelease(json: JSONObject): AppUpdate {
-        val version = json.optString("tag_name", "").removePrefix("v")
+        val tag = json.optString("tag_name", "").trim().removePrefix("v").removePrefix("V")
+        val releaseName = json.optString("name", "").trim()
+        val version = if (parseVersion(tag).isNotEmpty()) tag
+                      else releaseName.removePrefix("v").removePrefix("V")
         val assets = json.optJSONArray("assets") ?: JSONArray()
         var downloadUrl = ""
         for (i in 0 until assets.length()) {
@@ -82,7 +85,7 @@ object UpdateChecker {
         if (downloadUrl.isEmpty()) downloadUrl = json.optString("html_url", "")
         return AppUpdate(
             version = version,
-            name = json.optString("name", version),
+            name = releaseName,
             publishedAt = json.optString("updated_at", "").ifEmpty { json.optString("published_at", "") },
             downloadUrl = downloadUrl
         )

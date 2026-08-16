@@ -62,7 +62,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev
-          name: Astra Dev
+          name: "2.1.0-dev.${{ github.run_number }}"
           body: "Latest dev build from ${{ github.sha }}"
           files: app/build/outputs/apk/dev/*.apk
           prerelease: true

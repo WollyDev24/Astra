@@ -245,7 +245,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _updateState.value = _updateState.value.copy(
                 status = when {
                     update == null -> UpdateCheckStatus.Error
-                    channel == UpdateChannel.DEV -> UpdateCheckStatus.Available
                     UpdateChecker.isUpdateAvailable(update.version) -> UpdateCheckStatus.Available
                     else -> UpdateCheckStatus.UpToDate
                 },
