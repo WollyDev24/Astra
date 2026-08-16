@@ -1,12 +1,21 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package dev.wolly.dsbmaterial.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -18,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +43,7 @@ import dev.wolly.dsbmaterial.ui.UpdateState
 import dev.wolly.dsbmaterial.ui.theme.fullRoundedShape
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlinx.coroutines.delay
 import java.util.TimeZone
 
 private val commitDateParser: SimpleDateFormat by lazy {
@@ -65,6 +76,7 @@ fun UpdateScreen(
     viewModel: MainViewModel
 ) {
     LaunchedEffect(Unit) { viewModel.loadUpdatePage() }
+    var changesExpanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -88,55 +100,112 @@ fun UpdateScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item(key = "channel") {
-                    UpdateChannelCard(
-                        updateChannel = updateChannel,
-                        onSelectChannel = onSelectChannel
-                    )
+                    FlyInFromFirstCard(index = 0) {
+                        UpdateChannelCard(
+                            updateChannel = updateChannel,
+                            onSelectChannel = onSelectChannel
+                        )
+                    }
                 }
 
                 item(key = "status") {
-                    UpdateStatusCard(
-                        updateState = updateState,
-                        onDownloadUpdate = onDownloadUpdate,
-                        onInstallDev = onInstallDev,
-                        onCheckUpdates = { viewModel.checkForUpdates() }
-                    )
+                    FlyInFromFirstCard(index = 1) {
+                        UpdateStatusCard(
+                            updateState = updateState,
+                            onDownloadUpdate = onDownloadUpdate,
+                            onInstallDev = onInstallDev,
+                            onCheckUpdates = { viewModel.checkForUpdates() }
+                        )
+                    }
                 }
 
                 item(key = "changes_header") {
-                    Text(
-                        text = stringResource(R.string.label_recent_changes),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp)
-                    )
+                    FlyInFromFirstCard(index = 2) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { changesExpanded = !changesExpanded }
+                                .padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.label_recent_changes),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            val chevronRotation by animateFloatAsState(
+                                targetValue = if (changesExpanded) 90f else 0f,
+                                label = "changes_chevron"
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = if (changesExpanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp).rotate(chevronRotation)
+                            )
+                        }
+                    }
                 }
 
                 when (updateState.commitStatus) {
                     CommitStatus.Loading -> item(key = "changes_loading") {
-                        MorphingUpdateLoading(stringResource(R.string.msg_loading_commits))
+                        FlyInFromFirstCard(index = 3) {
+                            MorphingUpdateLoading(stringResource(R.string.msg_loading_commits))
+                        }
                     }
                     CommitStatus.Error -> item(key = "changes_error") {
-                        CommitErrorCard(onRetry = viewModel::refreshCommits)
+                        FlyInFromFirstCard(index = 3) {
+                            CommitErrorCard(onRetry = viewModel::refreshCommits)
+                        }
                     }
                     CommitStatus.Loaded ->
                         if (updateState.commits.isEmpty()) {
                             item(key = "changes_empty") {
-                                EmptyCommitsCard()
+                                FlyInFromFirstCard(index = 3) {
+                                    EmptyCommitsCard()
+                                }
                             }
                         } else {
-                            items(updateState.commits, key = { it.sha }) { commit ->
-                                CommitRow(commit)
+                            val visible = if (changesExpanded) updateState.commits else updateState.commits.take(1)
+                            itemsIndexed(visible) { index, commit ->
+                                FlyInFromFirstCard(index = 3 + index, animateImmediately = changesExpanded) {
+                                    CommitRow(commit)
+                                }
                             }
                         }
                     CommitStatus.Idle -> item(key = "changes_idle") {
-                        MorphingUpdateLoading(stringResource(R.string.msg_loading_commits))
+                        FlyInFromFirstCard(index = 3) {
+                            MorphingUpdateLoading(stringResource(R.string.msg_loading_commits))
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun FlyInFromFirstCard(
+    index: Int,
+    modifier: Modifier = Modifier,
+    animateImmediately: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(if (animateImmediately) 0L else index * 80L)
+        visible = true
+    }
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(tween(400)) +
+            scaleIn(initialScale = 0.92f, animationSpec = tween(400)) +
+            slideInVertically(tween(400)) { -it },
+        content = { content() }
+    )
 }
 
 @Composable
@@ -274,7 +343,7 @@ private fun UpdateStatusCard(
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text(stringResource(R.string.action_check_updates))
+                            Text(stringResource(R.string.action_check_updates), maxLines = 1, softWrap = false)
                         }
                     }
                     else -> {
@@ -288,7 +357,7 @@ private fun UpdateStatusCard(
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.action_check_updates))
+                                Text(stringResource(R.string.action_check_updates), maxLines = 1, softWrap = false)
                             }
                         } else {
                             TextButton(
@@ -298,7 +367,7 @@ private fun UpdateStatusCard(
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(stringResource(R.string.action_check_updates))
+                                Text(stringResource(R.string.action_check_updates), maxLines = 1, softWrap = false)
                             }
                         }
                     }

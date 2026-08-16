@@ -64,6 +64,8 @@
     <string name="action_install">Install</string>
     <string name="msg_downloading_build">Downloading build…</string>
     <string name="msg_dev_install_error">Could not download the dev build</string>
+    <string name="action_expand">Show more</string>
+    <string name="action_collapse">Show less</string>
     
     <string name="desc_select_class">Choose your class from the list (Because of limitations only classes with Substitiutions are shown, if your class isnt shown, enter it manually)</string>
     <string name="desc_swap_default">Default mapping</string>
