@@ -5,30 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Astra</title>
 <style>
-  :root {
-    --primary:#3C6939; --on-primary:#FFFFFF; --primary-container:#BCF0B4; --on-primary-container:#245024;
-    --secondary:#52634F; --secondary-container:#D6E8CE; --on-secondary-container:#3B4B38;
-    --tertiary:#38656A; --tertiary-container:#BCEBF0; --on-tertiary-container:#1F4D52;
-    --background:#F7FBF1; --surface:#F7FBF1; --surface-dim:#D8DBD2;
-    --surface-container-lowest:#FFFFFF; --surface-container-low:#F1F5EB; --surface-container:#ECEFE6;
-    --surface-container-high:#E6E9E0; --surface-container-highest:#E0E4DB;
-    --on-surface:#191D17; --on-surface-variant:#424940; --surface-variant:#DEE5D8;
-    --outline:#72796F; --outline-variant:#C2C9BD; --error:#BA1A1A;
-    --error-container:#FFDAD6; --on-error-container:#93000A;
-    --inverse-surface:#2D322C; --inverse-on-surface:#EFF2E9;
-  }
-  html[data-theme="dark"] {
-    --primary:#A1D39A; --on-primary:#0A390F; --primary-container:#245024; --on-primary-container:#BCF0B4;
-    --secondary:#BACCB3; --secondary-container:#3B4B38; --on-secondary-container:#D6E8CE;
-    --tertiary:#A0CFD4; --tertiary-container:#1F4D52; --on-tertiary-container:#BCEBF0;
-    --background:#10140F; --surface:#10140F; --surface-dim:#10140F;
-    --surface-container-lowest:#0B0F0A; --surface-container-low:#191D17; --surface-container:#1D211B;
-    --surface-container-high:#272B25; --surface-container-highest:#323630;
-    --on-surface:#E0E4DB; --on-surface-variant:#C2C9BD; --surface-variant:#424940;
-    --outline:#8C9388; --outline-variant:#424940; --error:#FFB4AB;
-    --error-container:#93000A; --on-error-container:#FFDAD6;
-    --inverse-surface:#E0E4DB; --inverse-on-surface:#2D322C;
-  }
+  /*__THEME_VARS__*/
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   body {
     font-family:"Roboto","Google Sans Flex",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -62,6 +39,33 @@
   .iconbtn svg { width:22px; height:22px; }
   .spinner { animation:spin 1s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
+  .morph-loading {
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    padding:72px 24px; min-height:40vh;
+  }
+  .morph-loading.show { display:flex; animation:fadeIn .25s ease; }
+  .morph-shape {
+    width:96px; height:96px;
+    background:var(--primary-container);
+    display:flex; align-items:center; justify-content:center;
+    animation:morphShape 4.8s ease-in-out infinite;
+    will-change:border-radius;
+  }
+  .morph-shape svg { width:48px; height:48px; color:var(--on-primary-container); }
+  .morph-spinner {
+    width:40px; height:40px; margin-top:24px;
+    border:4px solid color-mix(in srgb, var(--primary) 16%, transparent);
+    border-top-color:var(--primary);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  .morph-label { margin-top:16px; font-size:16px; color:var(--on-surface-variant); }
+  @keyframes morphShape {
+    0%, 100% { border-radius:50% 50% 50% 50% / 50% 50% 50% 50%; }
+    20%      { border-radius:24% 24% 24% 24% / 24% 24% 24% 24%; }
+    45%      { border-radius:38% 38% 38% 38% / 38% 38% 38% 38%; }
+    70%      { border-radius:62% 38% 38% 62% / 48% 58% 42% 52%; }
+  }
   .wrap { max-width:800px; margin:0 auto; padding:20px 16px 96px; }
   .search {
     display:flex; align-items:center; gap:10px; background:var(--surface-container-low);
@@ -83,46 +87,52 @@
   .dot.err { background:var(--error); }
   .day-card {
     background:var(--surface-container-low); border-radius:28px; padding:20px; margin-bottom:16px;
-    border:1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
     transition:box-shadow .2s;
   }
-  .day-card.today { background:var(--primary-container); }
+  .day-card.today { background:var(--primary-container); border-radius:48px; }
   .day-card.today .day-title { color:var(--on-primary-container); }
   .day-card.today .count { color:var(--on-primary-container); opacity:.75; }
   .day-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .day-title { font-size:24px; font-weight:800; color:var(--primary); letter-spacing:.2px; }
+  .day-title { font-size:26px; font-weight:800; color:var(--primary); letter-spacing:.2px; }
   .count { font-size:14px; color:var(--on-surface-variant); margin-top:2px; }
   .badge {
-    margin-left:auto; font-size:11px; font-weight:700; padding:4px 12px; border-radius:20px;
-    background:var(--secondary-container); color:var(--on-secondary-container);
+    margin-left:auto; font-size:12px; font-weight:800; letter-spacing:.4px; padding:4px 14px; border-radius:20px;
+    background:var(--primary); color:var(--on-primary);
   }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
   .chip {
-    font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px;
+    font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px;
     background:var(--secondary-container); color:var(--on-secondary-container);
   }
   .chip.more { opacity:.75; }
-  .rows { margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .rows { margin-top:14px; display:flex; flex-direction:column; gap:12px; }
   .row {
-    background:var(--surface-container); border-radius:18px; padding:14px;
+    background:color-mix(in srgb, var(--primary) 6%, transparent);
+    border-radius:28px; padding:14px;
     display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center;
   }
   .period {
-    font-weight:800; font-size:14px; min-width:34px; text-align:center;
+    font-weight:800; font-size:15px; min-width:34px; text-align:center;
     background:var(--surface-container-highest); color:var(--on-surface);
     border-radius:12px; padding:8px 6px;
   }
-  .subject { font-weight:700; font-size:15px; color:var(--primary); }
+  .subject { font-weight:800; font-size:15px; color:var(--primary); }
   .type-badge {
-    font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px; white-space:nowrap;
+    font-size:10px; font-weight:700; padding:4px 10px; border-radius:8px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; max-width:120px;
   }
-  .room { font-size:13px; color:var(--on-surface); margin-top:2px; font-weight:600; }
+  .room { font-size:14px; color:var(--on-surface); margin-top:2px; font-weight:700; }
+  .row-class {
+    grid-column:1 / -1; justify-self:start; margin-top:2px;
+    font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px;
+    background:color-mix(in srgb, var(--primary) 8%, transparent); color:var(--primary);
+  }
   .note {
     grid-column:1 / -1; margin-top:2px; display:flex; gap:8px; align-items:flex-start;
-    background:color-mix(in srgb, var(--primary-container) 45%, transparent);
-    border-radius:14px; padding:10px 12px; color:var(--on-surface-variant); font-size:13px; line-height:1.45;
+    background:color-mix(in srgb, var(--primary-container) 20%, transparent);
+    border-radius:16px; padding:10px 12px; color:var(--on-surface-variant); font-size:13px; line-height:1.45;
   }
-  .note svg { width:15px; height:15px; color:var(--primary); flex:none; margin-top:1px; }
+  .note svg { width:14px; height:14px; color:var(--primary); flex:none; margin-top:1px; }
   .empty {
     text-align:center; padding:80px 24px; color:var(--outline);
   }
@@ -136,8 +146,49 @@
     box-shadow:0 6px 24px rgba(0,0,0,.18);
   }
   .toast.show { transform:translateX(-50%) translateY(0); }
+  .view-btn {
+    display:none; margin-top:14px; width:100%; justify-content:center; align-items:center; gap:10px;
+    border:none; cursor:pointer; background:var(--primary); color:var(--on-primary);
+    font-family:inherit; font-weight:700; font-size:14px; padding:14px 16px; border-radius:999px;
+    transition:transform .1s;
+  }
+  .view-btn:active { transform:scale(.96); }
+  .view-btn svg { width:18px; height:18px; }
+  .modal-scrim {
+    position:fixed; inset:0; z-index:30; background:rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .modal {
+    background:var(--surface-container-low); border-radius:28px; width:min(760px, 100%);
+    max-height:85vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 24px 80px rgba(0,0,0,.35);
+    animation:popIn .25s cubic-bezier(.34,1.4,.64,1);
+  }
+  @keyframes popIn { from { transform:scale(.92); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .modal-head {
+    display:flex; align-items:center; gap:12px; padding:18px 20px;
+    border-bottom:1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
+  }
+  .modal-title { font-size:24px; font-weight:800; color:var(--on-surface); flex:1; min-width:0; }
+  .modal-body { overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
   @media (min-width:640px) {
-    .row { grid-template-columns:auto 1fr auto; }
+    .row { grid-template-columns:auto 1.8fr 1.4fr auto; }
+    .row .type-badge { max-width:none; }
+  }
+  @media (min-width:900px) {
+    .wrap { max-width:1200px; }
+    .days-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+      gap:16px; align-items:start;
+    }
+    .day-card { margin-bottom:0; cursor:pointer; transition:transform .12s, box-shadow .2s; }
+    .day-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.12); }
+    .day-card:active { transform:scale(.98); }
+    .rows { display:none; }
+    .view-btn { display:flex; }
+    .modal-body .rows { display:flex; }
   }
 </style>
 </head>
@@ -147,9 +198,9 @@
       <div class="logo">A</div>
       <div class="title-wrap">
         <div class="title">Astra</div>
-        <div class="subtitle" id="subtitle">Substitution plan</div>
+        <div class="subtitle" id="subtitle">Vertretungsplan</div>
       </div>
-      <button class="iconbtn" id="refreshBtn" title="Refresh" aria-label="Refresh">
+      <button class="iconbtn" id="refreshBtn" title="Aktualisieren" aria-label="Aktualisieren">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
       </button>
     </div>
@@ -158,19 +209,80 @@
   <div class="wrap">
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
-      <input id="search" type="search" placeholder="Search subject, room, class…" autocomplete="off">
+      <input id="search" type="search" placeholder="Fach, Raum, Klasse suchen…" autocomplete="off">
     </div>
     <div class="meta">
-      <span class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></span>
+      <span class="status"><span class="dot" id="dot"></span><span id="statusText">Wird geladen…</span></span>
       <span id="updatedText"></span>
     </div>
     <main id="content"></main>
-    <div class="footer">Served locally by Astra</div>
+    <div class="morph-loading" id="loadingView">
+      <div class="morph-shape">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3V8h-2v5H8l4 4 4-4z"/></svg>
+      </div>
+      <div class="morph-spinner"></div>
+      <div class="morph-label" id="loadingLabel">Wird geladen…</div>
+    </div>
+    <div class="footer">Wird lokal von Astra bereitgestellt</div>
   </div>
 
   <div class="toast" id="toast"></div>
 
 <script>
+  function detectLang() {
+    const prefs = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language || 'en'];
+    for (const l of prefs) {
+      const lc = String(l).toLowerCase();
+      if (lc.startsWith('de')) return 'de';
+      if (lc.startsWith('en')) return 'en';
+    }
+    return 'en';
+  }
+  const lang = detectLang();
+  document.documentElement.lang = lang;
+
+  const T = lang === 'de' ? {
+    subtitle: 'Vertretungsplan',
+    placeholder: 'Fach, Raum, Klasse suchen…',
+    loading: 'Wird geladen…',
+    live: 'Live',
+    offline: 'Server offline',
+    updated: 'Aktualisiert',
+    today: 'HEUTE',
+    entry: 'Eintrag',
+    entries: 'Einträge',
+    emptyTitle: 'Keine Vertretungen',
+    emptyHint: 'In der App aktualisieren oder auf das nächste Update warten.',
+    emptySearch: 'Keine Ergebnisse',
+    emptySearchHint: 'Versuche eine andere Suche.',
+    toastOffline: 'Server nicht erreichbar',
+    refresh: 'Aktualisieren',
+    footer: 'Wird lokal von Astra bereitgestellt',
+    viewButton: 'Vertretungen ansehen',
+    close: 'Schließen'
+  } : {
+    subtitle: 'Substitution plan',
+    placeholder: 'Search subject, room, class…',
+    loading: 'Loading…',
+    live: 'Live',
+    offline: 'Server offline',
+    updated: 'Updated',
+    today: 'TODAY',
+    entry: 'entry',
+    entries: 'entries',
+    emptyTitle: 'No substitutions yet',
+    emptyHint: 'Pull to refresh in the app or wait for the next update.',
+    emptySearch: 'No results',
+    emptySearchHint: 'Try a different search.',
+    toastOffline: 'Server not reachable',
+    refresh: 'Refresh',
+    footer: 'Served locally by Astra',
+    viewButton: 'View substitutions',
+    close: 'Close'
+  };
+
   const refreshBtn = document.getElementById('refreshBtn');
   const searchInput = document.getElementById('search');
   const contentEl = document.getElementById('content');
@@ -178,17 +290,29 @@
   const updatedEl = document.getElementById('updatedText');
   const dotEl = document.getElementById('dot');
   const toastEl = document.getElementById('toast');
+  const loadingView = document.getElementById('loadingView');
+  const loadingLabel = document.getElementById('loadingLabel');
+
+  const tabletQuery = window.matchMedia('(min-width: 900px)');
+
+  document.getElementById('subtitle').textContent = T.subtitle;
+  searchInput.placeholder = T.placeholder;
+  refreshBtn.title = T.refresh;
+  refreshBtn.setAttribute('aria-label', T.refresh);
+  loadingLabel.textContent = T.loading;
 
   let state = { entries: [], theme: {}, isRoomFirst: true, sortByPeriod: true, updatedAt: 0 };
   let timer = null;
+  let loadedOnce = false;
+  let loadingShownAt = 0;
 
   const TYPE_COLORS = [
     [/(entfall)/, '#D32F2F'],
-    [/(eigenvertretung)/, '#7B1FA2'],
     [/(vertretung)/, '#F57C00'],
     [/(verlegung|verschiebung)/, '#1976D2'],
+    [/(eigenvertretung)/, '#7B1FA2'],
     [/(betreuung)/, '#388E3C'],
-    [/(raum)/, '#00838F'],
+    [/(raumänderung|raum)/, '#00838F'],
   ];
 
   function esc(s) {
@@ -203,7 +327,7 @@
     root.setAttribute('data-theme', theme.dark ? 'dark' : 'light');
     for (const [k, v] of Object.entries(theme)) {
       if (k === 'dark') continue;
-      root.style.setProperty('--' + k, v);
+      root.style.setProperty('--' + k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), v);
     }
   }
 
@@ -250,15 +374,16 @@
     if (entries.length === 0) {
       contentEl.innerHTML =
         '<div class="empty"><div class="big">&#128196;</div>' +
-        '<h2>' + (q ? 'No results' : 'No substitutions yet') + '</h2>' +
-        '<p>' + (q ? 'Try a different search.' : 'Pull to refresh in the app or wait for the next update.') + '</p></div>';
+        '<h2>' + (q ? T.emptySearch : T.emptyTitle) + '</h2>' +
+        '<p>' + (q ? T.emptySearchHint : T.emptyHint) + '</p></div>';
       return;
     }
 
     const days = [...new Set(entries.map(e => e.day))].sort((a, b) => daySortKey(a) - daySortKey(b));
     const todayNames = new Date().toLocaleDateString('de-DE', { weekday:'long' });
+    const tablet = tabletQuery.matches;
 
-    let html = '';
+    let html = '<div class="days-grid">';
     for (const day of days) {
       let dayEntries = entries.filter(e => e.day === day);
       if (state.sortByPeriod) {
@@ -269,10 +394,10 @@
       const visible = classes.slice(0, 5);
       const overflow = classes.length - visible.length;
 
-      html += '<section class="day-card' + (isToday ? ' today' : '') + '">';
+      html += '<section class="day-card' + (isToday ? ' today' : '') + '" data-day="' + esc(day) + '">';
       html += '<div class="day-head"><div class="day-title">' + esc(day) + '</div>';
-      html += '<div class="count">' + dayEntries.length + ' ' + (dayEntries.length === 1 ? 'entry' : 'entries') + '</div>';
-      if (isToday) html += '<span class="badge">TODAY</span>';
+      html += '<div class="count">' + dayEntries.length + ' ' + (dayEntries.length === 1 ? T.entry : T.entries) + '</div>';
+      if (isToday) html += '<span class="badge">' + T.today + '</span>';
       html += '</div>';
       if (visible.length > 0) {
         html += '<div class="chips">';
@@ -280,28 +405,65 @@
         if (overflow > 0) html += '<span class="chip more">+' + overflow + '</span>';
         html += '</div>';
       }
-      html += '<div class="rows">';
-      for (const e of dayEntries) {
-        const isRoomFirst = state.isRoomFirst;
-        const roomDisplay = isRoomFirst ? e.room : e.art;
-        const typeDisplay = isRoomFirst ? e.art : e.room;
-        const tColor = typeStyle(typeDisplay);
-        const fg = tColor || getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim();
-        const bg = tColor ? tColor + '1f' : 'var(--secondary-container)';
-        const fgFinal = tColor || 'var(--on-secondary-container)';
-        html += '<div class="row">';
-        html += '<div class="period">' + esc(e.lesson) + '</div>';
-        html += '<div><div class="subject">' + esc(e.subject) + '</div>';
-        html += '<div class="room">' + esc(roomDisplay || '—') + '</div></div>';
-        html += '<span class="type-badge" style="background:' + bg + ';color:' + fgFinal + ';">' + esc(typeDisplay) + '</span>';
-        if (e.text && e.text.length > 0) {
-          html += '<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01" stroke-linecap="round"/></svg><span>' + esc(e.text) + '</span></div>';
-        }
-        html += '</div>';
+      if (tablet) {
+        html += '<button class="view-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>' + T.viewButton + '</button>';
+      } else {
+        html += '<div class="rows">' + dayEntries.map(rowHtml).join('') + '</div>';
       }
-      html += '</div></section>';
+      html += '</section>';
     }
+    html += '</div>';
     contentEl.innerHTML = html;
+  }
+
+  function rowHtml(e) {
+    const isRoomFirst = state.isRoomFirst;
+    const roomDisplay = isRoomFirst ? e.room : e.art;
+    const typeDisplay = isRoomFirst ? e.art : e.room;
+    const tColor = typeStyle(typeDisplay);
+    const bg = tColor ? tColor + '1f' : 'color-mix(in srgb, var(--secondary) 12%, transparent)';
+    const fgFinal = tColor || 'var(--on-secondary-container)';
+    let h = '<div class="row">';
+    h += '<div class="period">' + esc(e.lesson) + '</div>';
+    h += '<div><div class="subject">' + esc(e.subject) + '</div>';
+    h += '<div class="room">' + esc(roomDisplay || '—') + '</div></div>';
+    h += '<span class="type-badge" style="background:' + bg + ';color:' + fgFinal + ';">' + esc(typeDisplay) + '</span>';
+    if (e.className && e.className.length > 0) {
+      h += '<span class="row-class">' + esc(e.className) + '</span>';
+    }
+    if (e.text && e.text.length > 0) {
+      h += '<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01" stroke-linecap="round"/></svg><span>' + esc(e.text) + '</span></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function openDay(day) {
+    const dayEntries = state.entries.filter(e => e.day === day && dayFilter(e.day)).slice();
+    if (state.sortByPeriod) dayEntries.sort((a, b) => periodSortKey(a.lesson) - periodSortKey(b.lesson));
+    const scrim = document.createElement('div');
+    scrim.className = 'modal-scrim';
+    scrim.innerHTML =
+      '<div class="modal">' +
+        '<div class="modal-head"><div class="modal-title">' + esc(day) + '</div>' +
+        '<button class="iconbtn" data-close aria-label="' + T.close + '" title="' + T.close + '">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>' +
+        '</button></div>' +
+        '<div class="modal-body"><div class="rows">' + dayEntries.map(rowHtml).join('') + '</div></div>' +
+      '</div>';
+    scrim.addEventListener('click', e => {
+      if (e.target === scrim || e.target.closest('[data-close]')) closeModal(scrim);
+    });
+    const onKey = e => { if (e.key === 'Escape') { closeModal(scrim); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(scrim);
+  }
+
+  function closeModal(scrim) {
+    if (!scrim.isConnected) return;
+    scrim.style.transition = 'opacity .15s';
+    scrim.style.opacity = '0';
+    setTimeout(() => scrim.remove(), 160);
   }
 
   function showToast(msg) {
@@ -311,25 +473,41 @@
     showToast._t = setTimeout(() => toastEl.classList.remove('show'), 1800);
   }
 
+  async function hideLoading() {
+    const remaining = 3000 - (Date.now() - loadingShownAt);
+    if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+    loadingView.classList.remove('show');
+    contentEl.style.display = '';
+  }
+
   async function loadData(manual) {
     if (manual) refreshBtn.classList.add('spinner');
+    if (!loadedOnce || manual) {
+      loadingShownAt = Date.now();
+      loadingView.classList.add('show');
+      contentEl.style.display = 'none';
+    }
     dotEl.classList.remove('err');
-    statusEl.textContent = 'Loading…';
+    statusEl.textContent = T.loading;
     try {
       const res = await fetch('/api/data');
       const data = await res.json();
       state = { entries: data.entries || [], theme: data.theme || {}, isRoomFirst: !!data.isRoomFirst, sortByPeriod: !!data.sortByPeriod, updatedAt: data.updatedAt || 0 };
       applyTheme(state.theme);
       render();
-      statusEl.textContent = 'Live';
+      statusEl.textContent = T.live;
       updatedEl.textContent = state.updatedAt
-        ? 'Updated ' + new Date(state.updatedAt).toLocaleString()
+        ? T.updated + ' ' + new Date(state.updatedAt).toLocaleString()
         : '';
+      loadedOnce = true;
+      await hideLoading();
       scheduleRefresh();
     } catch (e) {
       dotEl.classList.add('err');
-      statusEl.textContent = 'Server offline';
-      if (manual) showToast('Server not reachable');
+      statusEl.textContent = T.offline;
+      loadedOnce = true;
+      await hideLoading();
+      if (manual) showToast(T.toastOffline);
     } finally {
       refreshBtn.classList.remove('spinner');
     }
@@ -342,6 +520,11 @@
 
   refreshBtn.addEventListener('click', () => loadData(true));
   searchInput.addEventListener('input', render);
+  contentEl.addEventListener('click', e => {
+    const card = e.target.closest('.day-card');
+    if (card && tabletQuery.matches && card.dataset.day) openDay(card.dataset.day);
+  });
+  tabletQuery.addEventListener('change', render);
 
   loadData(false);
   setInterval(() => loadData(false), 60000);

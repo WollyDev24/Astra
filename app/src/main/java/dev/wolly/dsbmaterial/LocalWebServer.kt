@@ -39,7 +39,9 @@ object LocalWebServer {
     private var appContext: Context? = null
 
     @Volatile
-    private var cachedPage: String? = null
+    private var pageTemplate: String? = null
+
+    private const val THEME_MARKER = "/*__THEME_VARS__*/"
 
     @Volatile
     private var parsedEntries: List<SubstitutionEntry> = emptyList()
@@ -205,14 +207,54 @@ object LocalWebServer {
     }
 
     private fun pageHtml(): String {
-        cachedPage?.let { return it }
         val ctx = appContext ?: return ""
-        return try {
+        val template = pageTemplate ?: try {
             ctx.assets.open("webserver/index.html").bufferedReader().use { it.readText() }
-                .also { cachedPage = it }
+                .also { pageTemplate = it }
         } catch (_: Exception) {
-            "<html><head><meta charset=\"utf-8\"></head><body><h1>Astra</h1></body></html>"
+            return "<html><head><meta charset=\"utf-8\"></head><body><h1>Astra</h1></body></html>"
         }
+        return template.replace(
+            THEME_MARKER,
+            ":root { color-scheme: light; ${themeVars(false)} }\n" +
+                "  @media (prefers-color-scheme: dark) { :root { color-scheme: dark; ${themeVars(true)} } }"
+        )
+    }
+
+    private fun themeVars(dark: Boolean): String {
+        val context = appContext ?: return ""
+        val scheme = currentScheme(context, dark)
+        val vars = linkedMapOf(
+            "primary" to scheme.primary,
+            "on-primary" to scheme.onPrimary,
+            "primary-container" to scheme.primaryContainer,
+            "on-primary-container" to scheme.onPrimaryContainer,
+            "secondary" to scheme.secondary,
+            "secondary-container" to scheme.secondaryContainer,
+            "on-secondary-container" to scheme.onSecondaryContainer,
+            "tertiary" to scheme.tertiary,
+            "tertiary-container" to scheme.tertiaryContainer,
+            "on-tertiary-container" to scheme.onTertiaryContainer,
+            "background" to scheme.background,
+            "surface" to scheme.surface,
+            "surface-dim" to scheme.surfaceDim,
+            "surface-container-lowest" to scheme.surfaceContainerLowest,
+            "surface-container-low" to scheme.surfaceContainerLow,
+            "surface-container" to scheme.surfaceContainer,
+            "surface-container-high" to scheme.surfaceContainerHigh,
+            "surface-container-highest" to scheme.surfaceContainerHighest,
+            "on-surface" to scheme.onSurface,
+            "on-surface-variant" to scheme.onSurfaceVariant,
+            "surface-variant" to scheme.surfaceVariant,
+            "outline" to scheme.outline,
+            "outline-variant" to scheme.outlineVariant,
+            "error" to scheme.error,
+            "error-container" to scheme.errorContainer,
+            "on-error-container" to scheme.onErrorContainer,
+            "inverse-surface" to scheme.inverseSurface,
+            "inverse-on-surface" to scheme.inverseOnSurface
+        )
+        return vars.entries.joinToString(" ") { (k, v) -> "--$k:${v.toHex()};" }
     }
 
     private class DSBWebServer(port: Int) : NanoHTTPD(port) {

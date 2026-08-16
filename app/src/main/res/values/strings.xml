@@ -109,6 +109,8 @@
     <string name="label_debug_typography">Typography Scale</string>
     
     <string name="label_today">Today</string>
+    <string name="widget_no_substitutions">No substitutions</string>
+    <string name="widget_more">+%1$d more</string>
     <string name="label_next_up">Next up</string>
     <string name="label_filter">Filter</string>
     <string name="label_filter_hint">Search by subject, room, type…</string>

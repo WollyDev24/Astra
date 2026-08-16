@@ -97,6 +97,8 @@
     <string name="label_debug_typography">Typografie-Skala</string>
     
     <string name="label_today">Heute</string>
+    <string name="widget_no_substitutions">Keine Vertretungen</string>
+    <string name="widget_more">+%1$d weitere</string>
     <string name="label_next_up">Nächste</string>
     <string name="label_filter">Filter</string>
     <string name="label_filter_hint">Nach Fach, Raum, Art suchen…</string>
