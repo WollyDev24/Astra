@@ -210,11 +210,19 @@ fun SettingsScreen(
                 )
                 if (autoFetchEnabled) {
                     SettingsDivider()
-                    var sliderValue by remember { mutableFloatStateOf(autoFetchInterval.toFloat()) }
+                    val minInterval = 15f
+                    val maxInterval = 120f
+                    val stepSize = (maxInterval - minInterval) / 7f
+                    val stepIndex: (Float) -> Int = { interval ->
+                        ((interval - minInterval) / stepSize).roundToInt().coerceIn(0, 7)
+                    }
+                    var sliderValue by remember {
+                        mutableFloatStateOf(stepIndex(autoFetchInterval.toFloat()) * stepSize + minInterval)
+                    }
                     val haptics = LocalHapticFeedback.current
                     val tickCount = 6 + 2
                     var lastTickIndex by remember { mutableIntStateOf(-1) }
-                    val tickIndex = ((((sliderValue - 15f) / 105f) * (tickCount - 1)).roundToInt()).coerceIn(0, tickCount - 1)
+                    val tickIndex = ((((sliderValue - minInterval) / (maxInterval - minInterval)) * (tickCount - 1)).roundToInt()).coerceIn(0, tickCount - 1)
                     LaunchedEffect(tickIndex) {
                         if (tickIndex != lastTickIndex) {
                             haptics.feedback(HapticFeedbackType.TextHandleMove)
@@ -228,14 +236,14 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(stringResource(R.string.label_fetch_interval), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.format_interval, sliderValue.toInt()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(R.string.format_interval, sliderValue.roundToInt()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(Modifier.height(8.dp))
                         Slider(
                             value = sliderValue,
-                            onValueChange = { sliderValue = it },
-                            onValueChangeFinished = { onSetAutoFetchInterval(sliderValue.toInt()) },
-                            valueRange = 15f..120f,
+                            onValueChange = { sliderValue = stepIndex(it) * stepSize + minInterval },
+                            onValueChangeFinished = { onSetAutoFetchInterval(sliderValue.roundToInt()) },
+                            valueRange = minInterval..maxInterval,
                             steps = 6
                         )
                     }
