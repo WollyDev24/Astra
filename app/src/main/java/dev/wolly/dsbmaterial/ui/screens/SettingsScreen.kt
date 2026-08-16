@@ -331,6 +331,7 @@ fun SettingsScreen(
                     description = stringResource(R.string.desc_switch_class),
                     icon = Icons.Default.School,
                     iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onChangeClass
                 )
                 SettingsDivider()
@@ -371,6 +372,7 @@ fun SettingsScreen(
                     description = if (customServerUrl != null) customServerUrl else stringResource(R.string.desc_custom_server),
                     icon = Icons.Default.Dns,
                     iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                     trailing = {
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -438,8 +440,8 @@ fun SettingsScreen(
                     description = if (webServerEnabled) stringResource(R.string.desc_webserver_running)
                                  else stringResource(R.string.desc_webserver),
                     icon = Icons.Default.Lan,
-                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                     trailing = { ExpressiveSwitch(checked = webServerEnabled, onCheckedChange = onToggleWebServer) },
                     onClick = onToggleWebServer
                 )
@@ -650,7 +652,7 @@ fun SettingsRow(
         }
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(2.dp))
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

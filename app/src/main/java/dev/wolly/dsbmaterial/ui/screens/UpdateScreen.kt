@@ -53,9 +53,7 @@ private val commitDateParser: SimpleDateFormat by lazy {
 }
 
 private val commitDateFormatter: SimpleDateFormat by lazy {
-    SimpleDateFormat("dd.MM.yyyy · HH:mm", Locale.getDefault()).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    SimpleDateFormat("dd.MM.yyyy · HH:mm", Locale.getDefault())
 }
 
 private fun formatCommitDate(iso: String): String {

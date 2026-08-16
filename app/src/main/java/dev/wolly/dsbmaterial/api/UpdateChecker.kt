@@ -83,7 +83,7 @@ object UpdateChecker {
         return AppUpdate(
             version = version,
             name = json.optString("name", version),
-            publishedAt = json.optString("published_at", ""),
+            publishedAt = json.optString("updated_at", "").ifEmpty { json.optString("published_at", "") },
             downloadUrl = downloadUrl
         )
     }
