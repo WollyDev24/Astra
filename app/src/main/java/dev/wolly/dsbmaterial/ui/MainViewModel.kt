@@ -2,6 +2,7 @@ package dev.wolly.dsbmaterial.ui
 
 import android.app.Application
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.AndroidViewModel
@@ -10,16 +11,24 @@ import dev.wolly.dsbmaterial.AutoFetchWorker
 import dev.wolly.dsbmaterial.BuildConfig
 import dev.wolly.dsbmaterial.DSBWidget
 import dev.wolly.dsbmaterial.LocalWebServer
+import dev.wolly.dsbmaterial.R
 import dev.wolly.dsbmaterial.api.AppUpdate
+import dev.wolly.dsbmaterial.api.DevBuildInstaller
+import dev.wolly.dsbmaterial.api.GitCommit
+import dev.wolly.dsbmaterial.api.DSBAuthException
 import dev.wolly.dsbmaterial.api.DSBMobileAPI
+import dev.wolly.dsbmaterial.api.DSBNetwork
+import dev.wolly.dsbmaterial.api.UpdateChannel
 import dev.wolly.dsbmaterial.api.UpdateChecker
 import dev.wolly.dsbmaterial.data.DataStoreManager
 import dev.wolly.dsbmaterial.data.SubstitutionEntry
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import androidx.work.*
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -31,19 +40,36 @@ sealed class UiState {
     data class Success(val entries: List<SubstitutionEntry>) : UiState()
     data class Error(val message: String) : UiState()
     object NeedsLogin : UiState()
+    object NeedsSetup : UiState()
     data class SelectingClass(val classes: List<String>, val u: String, val p: String) : UiState()
+    data class SetupPreview(val entries: List<SubstitutionEntry>) : UiState()
 }
 
 enum class UpdateCheckStatus { Idle, Checking, UpToDate, Available, Error }
 
+enum class CommitStatus { Idle, Loading, Loaded, Error }
+
 data class UpdateState(
     val status: UpdateCheckStatus = UpdateCheckStatus.Idle,
-    val update: AppUpdate? = null
+    val update: AppUpdate? = null,
+    val channel: UpdateChannel = UpdateChannel.STABLE,
+    val installing: Boolean = false,
+    val commitStatus: CommitStatus = CommitStatus.Idle,
+    val commits: List<GitCommit> = emptyList()
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val dataStoreManager = DataStoreManager(application)
     private val gson = Gson()
+
+    companion object {
+        private val DAY_SORT_REGEX = Regex("""(\d{2})\.(\d{2})\.(\d{4})""")
+        private val PERIOD_DIGITS_REGEX = Regex("\\d+")
+        private val DAY_NAMES = listOf(
+            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+            "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"
+        )
+    }
     
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState
@@ -102,6 +128,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val password: StateFlow<String?> = dataStoreManager.passwordFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val autoUpdateCheck: StateFlow<Boolean> = dataStoreManager.autoUpdateCheckFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val updateChannel: StateFlow<UpdateChannel> = dataStoreManager.updateChannelFlow
+        .map { UpdateChannel.fromKey(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, UpdateChannel.STABLE)
+
     private val _archive = MutableStateFlow<List<SubstitutionEntry>>(emptyList())
     val archive: StateFlow<List<SubstitutionEntry>> = _archive
 
@@ -133,14 +166,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val updateState: StateFlow<UpdateState> = _updateState
 
     private var lastSuccessEntries: List<SubstitutionEntry> = emptyList()
+    private var lastRawEntries: List<SubstitutionEntry> = emptyList()
     private var isDemoMode = false
+    private var setupInProgress = false
     private var appOpenTime = 0L
     private val minLoadingDurationMs = 1800L
+    private val minUpdateLoadDurationMs = 3000L
 
     private suspend fun ensureLoadingFeel() {
         val elapsed = SystemClock.elapsedRealtime() - appOpenTime
         val remaining = minLoadingDurationMs - elapsed
         if (remaining > 0) delay(remaining)
+    }
+
+    private suspend fun ensureUpdateLoadFeel(start: Long) {
+        val elapsed = SystemClock.elapsedRealtime() - start
+        val remaining = minUpdateLoadDurationMs - elapsed
+        if (remaining > 0) delay(remaining)
+    }
+
+    private fun showLoginError(message: String) {
+        Toast.makeText(getApplication(), message, Toast.LENGTH_LONG).show()
+        _uiState.value = UiState.NeedsLogin
     }
 
     init {
@@ -163,22 +210,80 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadSelectedClasses()
         loadCachedSnapshot()
         scheduleAutoFetchOnStartup()
-        checkForUpdates()
-    }
-
-    fun checkForUpdates() {
-        if (_updateState.value.status == UpdateCheckStatus.Checking) return
         viewModelScope.launch {
-            _updateState.value = UpdateState(status = UpdateCheckStatus.Checking)
-            val latest = UpdateChecker.checkLatest()
-            _updateState.value = if (latest == null) {
-                UpdateState(status = UpdateCheckStatus.Error)
-            } else if (UpdateChecker.isUpdateAvailable(latest.version)) {
-                UpdateState(status = UpdateCheckStatus.Available, update = latest)
-            } else {
-                UpdateState(status = UpdateCheckStatus.UpToDate, update = latest)
+            if (dataStoreManager.autoUpdateCheckFlow.first()) {
+                checkForUpdates()
             }
         }
+    }
+
+    fun setUpdateChannel(channel: UpdateChannel) {
+        if (channel == updateChannel.value) return
+        viewModelScope.launch { dataStoreManager.saveUpdateChannel(channel.key) }
+        checkForUpdates(channel)
+    }
+
+    fun checkForUpdates(channel: UpdateChannel = updateChannel.value) {
+        if (_updateState.value.status == UpdateCheckStatus.Checking) return
+        viewModelScope.launch {
+            val start = SystemClock.elapsedRealtime()
+            _updateState.value = _updateState.value.copy(status = UpdateCheckStatus.Checking, channel = channel)
+            val update = when (channel) {
+                UpdateChannel.DEV -> UpdateChecker.fetchDevBuild()?.let {
+                    AppUpdate(
+                        version = "dev",
+                        name = it.name,
+                        publishedAt = it.createdAt,
+                        downloadUrl = it.archiveUrl
+                    )
+                }
+                else -> UpdateChecker.checkLatest(channel)
+            }
+            ensureUpdateLoadFeel(start)
+            _updateState.value = _updateState.value.copy(
+                status = when {
+                    update == null -> UpdateCheckStatus.Error
+                    channel == UpdateChannel.DEV -> UpdateCheckStatus.Available
+                    UpdateChecker.isUpdateAvailable(update.version) -> UpdateCheckStatus.Available
+                    else -> UpdateCheckStatus.UpToDate
+                },
+                update = update
+            )
+        }
+    }
+
+    fun installDevBuild() {
+        val url = _updateState.value.update?.downloadUrl ?: return
+        if (_updateState.value.installing) return
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(installing = true)
+            val apk = DevBuildInstaller.downloadApk(getApplication(), url)
+            _updateState.value = _updateState.value.copy(installing = false)
+            if (apk == null) {
+                Toast.makeText(getApplication(), R.string.msg_dev_install_error, Toast.LENGTH_LONG).show()
+            } else {
+                DevBuildInstaller.install(getApplication(), apk)
+            }
+        }
+    }
+
+    fun refreshCommits() {
+        if (_updateState.value.commitStatus == CommitStatus.Loading) return
+        _updateState.value = _updateState.value.copy(commitStatus = CommitStatus.Loading)
+        viewModelScope.launch {
+            val start = SystemClock.elapsedRealtime()
+            val commits = UpdateChecker.fetchCommits()
+            ensureUpdateLoadFeel(start)
+            _updateState.value = _updateState.value.copy(
+                commitStatus = if (commits == null) CommitStatus.Error else CommitStatus.Loaded,
+                commits = commits.orEmpty()
+            )
+        }
+    }
+
+    fun loadUpdatePage() {
+        if (_updateState.value.status == UpdateCheckStatus.Idle) checkForUpdates()
+        if (_updateState.value.commitStatus != CommitStatus.Loaded) refreshCommits()
     }
 
     private fun loadCachedSnapshot() {
@@ -187,7 +292,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (timestamp > 0L) {
                 _lastUpdated.value = timestamp
             }
-            val cached = loadCachedEntries()
+            val cached = withContext(Dispatchers.IO) { loadCachedEntries() }
             if (cached != null && (_uiState.value == UiState.Idle || _uiState.value is UiState.Loading)) {
                 ensureLoadingFeel()
                 if (_uiState.value is UiState.Loading) {
@@ -208,22 +313,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun saveCache(entries: List<SubstitutionEntry>) {
         if (entries.isEmpty()) return
-        dataStoreManager.saveCachedEntries(gson.toJson(entries))
         val now = System.currentTimeMillis()
-        dataStoreManager.saveLastUpdated(now)
+        withContext(Dispatchers.IO) {
+            dataStoreManager.saveCachedEntries(gson.toJson(entries))
+            dataStoreManager.saveLastUpdated(now)
+        }
         _lastUpdated.value = now
         _isOffline.value = false
     }
 
     private fun loadArchive() {
         viewModelScope.launch {
-            dataStoreManager.archiveFlow.collect { json ->
+            dataStoreManager.archiveFlow.distinctUntilChanged().collect { json ->
                 if (!json.isNullOrEmpty()) {
-                    val type = object : TypeToken<List<SubstitutionEntry>>() {}.type
-                    val entries: List<SubstitutionEntry> = gson.fromJson(json, type)
-                    val sorted = sortArchive(entries)
-                    _archive.value = sorted
-                    LocalWebServer.setEntries(sorted, _lastUpdated.value ?: 0L)
+                    val entries = withContext(Dispatchers.IO) {
+                        val type = object : TypeToken<List<SubstitutionEntry>>() {}.type
+                        val parsed: List<SubstitutionEntry> = gson.fromJson(json, type)
+                        sortArchive(parsed)
+                    }
+                    _archive.value = entries
+                    LocalWebServer.setEntries(entries, _lastUpdated.value ?: 0L)
                 }
             }
         }
@@ -231,7 +340,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadSelectedClasses() {
         viewModelScope.launch {
-            dataStoreManager.selectedClassesFlow.collect { json ->
+            dataStoreManager.selectedClassesFlow.distinctUntilChanged().collect { json ->
                 if (!json.isNullOrEmpty()) {
                     _selectedClasses.value = json.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                 }
@@ -248,17 +357,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun parseDaySortKey(day: String): Long {
-        val dateRegex = Regex("""(\d{2})\.(\d{2})\.(\d{4})""")
-        val match = dateRegex.find(day)
+        val match = DAY_SORT_REGEX.find(day)
         if (match != null) {
             val (d, m, y) = match.destructured
             return y.toLong() * 10000 + m.toLong() * 100 + d.toLong()
         }
-        val dayNames = listOf(
-            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-            "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"
-        )
-        val index = dayNames.indexOfFirst { day.lowercase().startsWith(it) }
+        val index = DAY_NAMES.indexOfFirst { day.lowercase().startsWith(it) }
         if (index >= 0) return (index % 7).toLong() + 1
         return Long.MAX_VALUE
     }
@@ -274,12 +378,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val toArchive = entries ?: lastSuccessEntries
         if (toArchive.isNotEmpty()) {
             viewModelScope.launch {
-                val newArchive = (toArchive + _archive.value).distinctBy { 
-                    it.day + it.lesson + it.subject + it.room + it.art + it.text 
+                val sortedArchive = withContext(Dispatchers.IO) {
+                    val newArchive = (toArchive + _archive.value).distinctBy {
+                        it.day + it.lesson + it.subject + it.room + it.art + it.text
+                    }
+                    val sorted = sortArchive(newArchive)
+                    dataStoreManager.saveArchive(gson.toJson(sorted))
+                    sorted
                 }
-                val sortedArchive = sortArchive(newArchive)
                 _archive.value = sortedArchive
-                dataStoreManager.saveArchive(gson.toJson(sortedArchive))
                 updateWidget()
             }
         }
@@ -287,18 +394,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeFromArchive(entry: SubstitutionEntry) {
         viewModelScope.launch {
-            val newArchive = _archive.value.filter { it != entry }
+            val newArchive = withContext(Dispatchers.IO) {
+                val filtered = _archive.value.filter { it != entry }
+                dataStoreManager.saveArchive(gson.toJson(filtered))
+                filtered
+            }
             _archive.value = newArchive
-            dataStoreManager.saveArchive(gson.toJson(newArchive))
             updateWidget()
         }
     }
 
     fun removeFromArchive(entries: List<SubstitutionEntry>) {
         viewModelScope.launch {
-            val newArchive = _archive.value.filter { it !in entries }
+            val newArchive = withContext(Dispatchers.IO) {
+                val filtered = _archive.value.filter { it !in entries }
+                dataStoreManager.saveArchive(gson.toJson(filtered))
+                filtered
+            }
             _archive.value = newArchive
-            dataStoreManager.saveArchive(gson.toJson(newArchive))
             updateWidget()
         }
     }
@@ -306,7 +419,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearArchive() {
         viewModelScope.launch {
             _archive.value = emptyList()
-            dataStoreManager.saveArchive("")
+            withContext(Dispatchers.IO) { dataStoreManager.saveArchive("") }
             updateWidget()
         }
     }
@@ -530,7 +643,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val className = dataStoreManager.classNameFlow.first() ?: ""
             if (className.isEmpty()) {
-                _uiState.value = UiState.NeedsLogin
+                if (setupInProgress) {
+                    _uiState.value = UiState.NeedsSetup
+                } else {
+                    _uiState.value = UiState.NeedsLogin
+                }
             } else {
                 openSettings()
             }
@@ -548,7 +665,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val className = dataStoreManager.classNameFlow.first() ?: ""
 
             if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
-                _uiState.value = UiState.NeedsLogin
+                val completed = dataStoreManager.setupCompletedFlow.first()
+                _uiState.value = if (completed) UiState.NeedsLogin else UiState.NeedsSetup
             } else if (className.isEmpty()) {
                 fetchClasses(username, password)
             } else {
@@ -559,15 +677,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun login(username: String, password: String) {
         isDemoMode = false
+        setupInProgress = false
+        lastRawEntries = emptyList()
+        DSBNetwork.resetSession()
+        viewModelScope.launch {
+            dataStoreManager.saveSetupCompleted(true)
+            fetchClasses(username, password)
+        }
+    }
+
+    fun loginFromSetup(username: String, password: String) {
+        isDemoMode = false
+        setupInProgress = true
+        lastRawEntries = emptyList()
+        DSBNetwork.resetSession()
         viewModelScope.launch {
             fetchClasses(username, password)
         }
     }
 
+    fun skipSetup() {
+        setupInProgress = false
+        viewModelScope.launch {
+            dataStoreManager.saveSetupCompleted(true)
+            _uiState.value = UiState.NeedsLogin
+        }
+    }
+
+    fun finishSetup() {
+        setupInProgress = false
+        viewModelScope.launch {
+            dataStoreManager.saveSetupCompleted(true)
+            _uiState.value = UiState.Success(sortEntries(lastSuccessEntries))
+        }
+    }
+
+    fun setAutoUpdateCheck(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStoreManager.saveAutoUpdateCheck(enabled)
+            if (enabled) checkForUpdates()
+        }
+    }
+
     fun loginDemo() {
         isDemoMode = true
+        setupInProgress = false
         _uiState.value = UiState.Loading
         viewModelScope.launch {
+            dataStoreManager.saveSetupCompleted(true)
             delay(1000)
             val demoEntries = listOf(
                 SubstitutionEntry("Montag", "Vertretung", "10a", "1 - 2", "Mathematik", "R101", "", "", "Lehrer krank", ""),
@@ -585,30 +742,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = UiState.Loading
         try {
             val api = DSBMobileAPI(u, p, resolveBaseUrl())
-            val classes = api.getAvailableClasses()
+            val raw = api.getSubstitutions("")
+            lastRawEntries = raw
             ensureLoadingFeel()
+            val classes = raw.map { it.className }
+                .flatMap { it.split(",").map { s -> s.trim() } }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .sorted()
             if (classes.isEmpty()) {
-                _uiState.value = UiState.Error("No classes found. Check your credentials.")
+                showLoginError(getApplication<Application>().getString(R.string.msg_no_classes))
             } else {
                 _uiState.value = UiState.SelectingClass(classes, u, p)
             }
+        } catch (e: DSBAuthException) {
+            ensureLoadingFeel()
+            showLoginError(getApplication<Application>().getString(R.string.msg_login_failed))
         } catch (e: Exception) {
             ensureLoadingFeel()
-            _uiState.value = UiState.Error(e.message ?: "Login failed")
+            showLoginError(e.message ?: getApplication<Application>().getString(R.string.msg_unknown_error))
         }
     }
 
     fun selectClass(username: String, password: String, className: String) {
         viewModelScope.launch {
             dataStoreManager.saveCredentials(username, password, className)
-            fetchData(username, password, className)
+            fetchData(username, password, className, lastRawEntries.takeIf { it.isNotEmpty() })
         }
     }
 
     fun selectAllClasses(username: String, password: String) {
         viewModelScope.launch {
             dataStoreManager.saveCredentials(username, password, "")
-            fetchData(username, password, "")
+            fetchData(username, password, "", lastRawEntries.takeIf { it.isNotEmpty() })
         }
     }
     
@@ -630,12 +796,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            DSBNetwork.resetSession()
             dataStoreManager.clearCredentials()
             dataStoreManager.saveCachedEntries("")
             dataStoreManager.saveLastUpdated(0L)
             _lastUpdated.value = null
             _isOffline.value = false
             lastSuccessEntries = emptyList()
+            lastRawEntries = emptyList()
             _uiState.value = UiState.NeedsLogin
             _selectedTab.value = 0
             _selectedClasses.value = emptyList()
@@ -670,6 +838,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = UiState.Success(sortEntries(deduped))
                 saveCache(deduped)
                 archiveSubstitutions(deduped)
+            } catch (e: DSBAuthException) {
+                showLoginError(getApplication<Application>().getString(R.string.msg_login_failed))
             } catch (e: Exception) {
                 fallBackToCache(e.message ?: "Unknown error")
             } finally {
@@ -678,12 +848,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun fetchData(u: String, p: String, c: String) {
+    private suspend fun fetchData(u: String, p: String, c: String, raw: List<SubstitutionEntry>? = null) {
         if (_uiState.value !is UiState.Success) _uiState.value = UiState.Loading
         _isRefreshing.value = true
         try {
-            val api = DSBMobileAPI(u, p, resolveBaseUrl())
-            val allRaw = api.getSubstitutions("")
+            val allRaw = raw ?: run {
+                val api = DSBMobileAPI(u, p, resolveBaseUrl())
+                api.getSubstitutions("")
+            }
 
             val filtered = if (c.isEmpty() && _selectedClasses.value.isEmpty()) {
                 allRaw
@@ -701,7 +873,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             archiveSubstitutions(deduped)
             ensureLoadingFeel()
             lastSuccessEntries = deduped
-            _uiState.value = UiState.Success(sortEntries(deduped))
+            _uiState.value = if (setupInProgress) {
+                UiState.SetupPreview(sortEntries(deduped))
+            } else {
+                UiState.Success(sortEntries(deduped))
+            }
+        } catch (e: DSBAuthException) {
+            ensureLoadingFeel()
+            showLoginError(getApplication<Application>().getString(R.string.msg_login_failed))
         } catch (e: Exception) {
             ensureLoadingFeel()
             fallBackToCache(e.message ?: "Unknown error")
@@ -711,7 +890,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun fallBackToCache(message: String) {
-        val cached = loadCachedEntries()
+        val cached = withContext(Dispatchers.IO) { loadCachedEntries() }
         if (cached != null) {
             _isOffline.value = true
             lastSuccessEntries = cached

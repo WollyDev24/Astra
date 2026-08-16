@@ -74,8 +74,7 @@ fun SettingsScreen(
     webServerUrls: List<String> = emptyList(),
     onToggleWebServer: () -> Unit = {},
     updateState: UpdateState = UpdateState(),
-    onCheckUpdates: () -> Unit = {},
-    onDownloadUpdate: (String) -> Unit = {},
+    onOpenUpdates: () -> Unit = {},
     onAbout: () -> Unit,
     onAddClass: (String) -> Unit = {},
     onRemoveClass: (String) -> Unit = {},
@@ -517,45 +516,8 @@ fun SettingsScreen(
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp)
                         }
                     },
-                    onClick = if (status == UpdateCheckStatus.Error) onCheckUpdates else null
+                    onClick = onOpenUpdates
                 )
-                if (status == UpdateCheckStatus.Available) {
-                    SettingsDivider()
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { updateState.update?.downloadUrl?.let(onDownloadUpdate) },
-                            shape = fullRoundedShape(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.action_download))
-                        }
-                        OutlinedButton(
-                            onClick = onCheckUpdates,
-                            shape = fullRoundedShape(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.action_check_updates))
-                        }
-                    }
-                } else if (status != UpdateCheckStatus.Checking) {
-                    SettingsDivider()
-                    TextButton(
-                        onClick = onCheckUpdates,
-                        shape = fullRoundedShape(),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.action_check_updates))
-                    }
-                }
             }
         }
 

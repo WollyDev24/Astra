@@ -24,6 +24,8 @@ import java.time.format.DateTimeFormatter
 import java.net.CookieManager
 import java.net.CookiePolicy
 
+class DSBAuthException(message: String) : Exception(message)
+
 object DSBNetwork {
     private val cookieManager = CookieManager().apply {
         setCookiePolicy(CookiePolicy.ACCEPT_ALL)
@@ -39,6 +41,11 @@ object DSBNetwork {
     }
 
     var loggedIn: Boolean = false
+
+    fun resetSession() {
+        loggedIn = false
+        cookieManager.cookieStore.removeAll()
+    }
 }
 
 class DSBMobileAPI(private val username: String, private val password: String, private val baseUrl: String = "") {
@@ -47,6 +54,14 @@ class DSBMobileAPI(private val username: String, private val password: String, p
     private val WEB_API_URL = if (baseUrl.isNotEmpty()) "$baseUrl/jhw-1fd98248-440c-4283-bef6-dc82fe769b61.ashx/GetData" else "https://www.dsbmobile.de/jhw-1fd98248-440c-4283-bef6-dc82fe769b61.ashx/GetData"
 
     private val client = DSBNetwork.client
+
+    companion object {
+        private val CONTROL_CHARS_REGEX = Regex("[\\x00-\\x1F\\x7F]")
+        private val WHITELIST_REGEX = Regex("[^\\p{L}\\p{N} äöüÄÖÜß.,:;!\\-+/()&]")
+        private val MULTI_SPACE_REGEX = Regex("\\s+")
+        private val LESSON_SPLIT_REGEX = Regex("[,\\-\\s]+")
+        private val LESSON_PAIR_REGEX = Regex("(\\d+)\\s+(\\d+)")
+    }
 
     private suspend fun webLogin(): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -91,7 +106,7 @@ class DSBMobileAPI(private val username: String, private val password: String, p
         if (result == null) {
             if (!webLogin()) {
                 DSBNetwork.loggedIn = false
-                return@withContext null
+                throw DSBAuthException("Login failed. Invalid credentials.")
             }
             result = webApiCall()
         }
@@ -232,7 +247,7 @@ class DSBMobileAPI(private val username: String, private val password: String, p
             if (groupEntries.size == 1) return@map groupEntries.first()
             
             // Extract all individual lesson numbers
-            val lessons = groupEntries.flatMap { it.lesson.split(Regex("[,\\-\\s]+")) }
+            val lessons = groupEntries.flatMap { it.lesson.split(LESSON_SPLIT_REGEX) }
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .distinct()
@@ -308,21 +323,12 @@ class DSBMobileAPI(private val username: String, private val password: String, p
         return results
     }
 
-    suspend fun getAvailableClasses(): List<String> = withContext(Dispatchers.IO) {
-        val entries = getSubstitutions("")
-        entries.map { it.className }
-            .flatMap { it.split(",").map { s -> s.trim() } }
-            .filter { it.isNotEmpty() }
-            .distinct()
-            .sorted()
-    }
-
     private fun formatLesson(input: String): String {
-        val clean = input.replace(Regex("\\s+"), " ").trim()
+        val clean = input.replace(MULTI_SPACE_REGEX, " ").trim()
         if (clean.length == 2 && clean[0].isDigit() && clean[1].isDigit()) {
             return "${clean[0]} - ${clean[1]}"
         }
-        return clean.replace(Regex("(\\d+)\\s+(\\d+)"), "$1 - $2")
+        return clean.replace(LESSON_PAIR_REGEX, "$1 - $2")
     }
 
     private fun cellText(cell: org.jsoup.nodes.Element): String {
@@ -334,10 +340,10 @@ class DSBMobileAPI(private val username: String, private val password: String, p
         return input
             .replace("\u00a0", " ")
             .replace("\uFFFD", "")
-            .replace(Regex("[\\x00-\\x1F\\x7F]"), "")
+            .replace(CONTROL_CHARS_REGEX, "")
             // Whitelist: Letters (inc. Umlauts), Numbers, Spaces, and basic punctuation
-            .replace(Regex("[^\\p{L}\\p{N} äöüÄÖÜß.,:;!\\-+/()&]"), "")
-            .replace(Regex("\\s+"), " ")
+            .replace(WHITELIST_REGEX, "")
+            .replace(MULTI_SPACE_REGEX, " ")
             .trim()
     }
 

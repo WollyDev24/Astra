@@ -41,6 +41,9 @@ class DataStoreManager(private val context: Context) {
         val CACHED_ENTRIES = stringPreferencesKey("cached_entries")
         val LAST_UPDATED = longPreferencesKey("last_updated")
         val WEB_SERVER_ENABLED = booleanPreferencesKey("web_server_enabled")
+        val AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
+        val UPDATE_CHANNEL = stringPreferencesKey("update_channel")
+        val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
     }
 
     val usernameFlow: Flow<String?> = context.dataStore.data.map { it[USERNAME] }
@@ -67,6 +70,9 @@ class DataStoreManager(private val context: Context) {
     val cachedEntriesFlow: Flow<String?> = context.dataStore.data.map { it[CACHED_ENTRIES] }
     val lastUpdatedFlow: Flow<Long> = context.dataStore.data.map { it[LAST_UPDATED] ?: 0L }
     val webServerEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[WEB_SERVER_ENABLED] ?: false }
+    val autoUpdateCheckFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }
+    val updateChannelFlow: Flow<String> = context.dataStore.data.map { it[UPDATE_CHANNEL] ?: "stable" }
+    val setupCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[SETUP_COMPLETED] ?: false }
 
     suspend fun saveCredentials(username: String, password: String, className: String) {
         context.dataStore.edit { settings ->
@@ -161,6 +167,18 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun saveWebServerEnabled(enabled: Boolean) {
         context.dataStore.edit { it[WEB_SERVER_ENABLED] = enabled }
+    }
+
+    suspend fun saveAutoUpdateCheck(enabled: Boolean) {
+        context.dataStore.edit { it[AUTO_UPDATE_CHECK] = enabled }
+    }
+
+    suspend fun saveUpdateChannel(channel: String) {
+        context.dataStore.edit { it[UPDATE_CHANNEL] = channel }
+    }
+
+    suspend fun saveSetupCompleted(completed: Boolean) {
+        context.dataStore.edit { it[SETUP_COMPLETED] = completed }
     }
 
     suspend fun clearCredentials() {

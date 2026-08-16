@@ -192,13 +192,16 @@ private fun HomeDayHeader(
     }
 }
 
-private fun formatUpdatedTime(timestamp: Long): String {
-    val date = java.util.Date(timestamp)
-    val format = java.text.DateFormat.getDateTimeInstance(
+private val updatedTimeFormat: java.text.DateFormat by lazy {
+    java.text.DateFormat.getDateTimeInstance(
         java.text.DateFormat.SHORT,
         java.text.DateFormat.SHORT
     )
-    return format.format(date)
+}
+
+private fun formatUpdatedTime(timestamp: Long): String {
+    val date = java.util.Date(timestamp)
+    return updatedTimeFormat.format(date)
 }
 
 private data class TodayInfo(val count: Int, val dayName: String)

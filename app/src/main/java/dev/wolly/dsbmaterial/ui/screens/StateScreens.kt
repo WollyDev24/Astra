@@ -268,7 +268,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit, onLoginDemo: () -> Unit, cust
 }
 
 @Composable
-private fun MorphingIconBackground(
+internal fun MorphingIconBackground(
     color: Color,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
@@ -304,7 +304,7 @@ private fun MorphingIconBackground(
 }
 
 @Composable
-private fun PasswordShapeField(
+internal fun PasswordShapeField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -373,9 +373,6 @@ fun ClassSelectionScreen(classes: List<String>, onClassSelected: (String) -> Uni
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back), tint = MaterialTheme.colorScheme.primary)
-            }
             Text(stringResource(R.string.title_select_class), style = MaterialTheme.typography.headlineLargeEmphasized, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(12.dp))

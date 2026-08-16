@@ -47,6 +47,23 @@
     <string name="msg_update_error">Check failed</string>
     <string name="desc_update_error">Could not check for updates. Tap to retry.</string>
     <string name="action_download">Download</string>
+    <string name="label_recent_changes">Recent changes</string>
+    <string name="desc_recent_changes">Latest commits to the app folder</string>
+    <string name="msg_loading_commits">Loading recent changes…</string>
+    <string name="msg_commits_error">Could not load recent changes</string>
+    <string name="desc_commits_error">Check your connection. Tap to retry.</string>
+    <string name="msg_no_commits">No recent changes</string>
+    <string name="label_current_version">Current version: %1$s</string>
+    <string name="label_update_channel">Update channel</string>
+    <string name="desc_update_channel">Which builds to check for</string>
+    <string name="channel_stable">Stable</string>
+    <string name="channel_beta">Beta</string>
+    <string name="channel_dev">Dev</string>
+    <string name="msg_dev_available">Dev build available</string>
+    <string name="desc_dev_available">Build from %1$s</string>
+    <string name="action_install">Install</string>
+    <string name="msg_downloading_build">Downloading build…</string>
+    <string name="msg_dev_install_error">Could not download the dev build</string>
     
     <string name="desc_select_class">Choose your class from the list (Because of limitations only classes with Substitiutions are shown, if your class isnt shown, enter it manually)</string>
     <string name="desc_swap_default">Default mapping</string>
@@ -55,7 +72,7 @@
     <string name="desc_logout">Remove credentials and reset app</string>
     <string name="desc_dynamic_color">Use colors from your wallpaper (Android 12+)</string>
     <string name="desc_sort_period">Orders substitutions chronologically</string>
-    <string name="desc_about">Version 2.0.0 • Developed by WollyDev24</string>
+    <string name="desc_about">Version 2.1.0 • Developed by WollyDev24</string>
     <string name="label_demo_mode">Demo Mode</string>
     <string name="label_theme_picker">Theme Color</string>
     <string name="desc_theme_picker">Choose a custom color theme</string>
@@ -139,6 +156,24 @@
     <string name="desc_floating_nav">Show a floating pill instead of the bottom navigation bar</string>
     <string name="action_clear_filter">Clear filter</string>
     <string name="action_remove_class">Remove class</string>
+
+    <string name="title_setup">Welcome to Astra</string>
+    <string name="desc_setup_intro">Sign in with your DSBmobile account to pull your substitutions, then fine-tune everything on the next screen.</string>
+    <string name="title_setup_customize">Make it yours</string>
+    <string name="desc_setup_customize_intro">Tweak how substitutions look and behave. The preview below updates live.</string>
+    <string name="label_setup_preferences">Preferences</string>
+    <string name="label_setup_preview_title">Your substitutions preview</string>
+    <string name="desc_setup_preview_intro">This is the first substitution found for your class. Toggle the swap to switch Room and Type values.</string>
+    <string name="desc_preview_placeholder">Sample entry shown</string>
+    <string name="action_finish_setup">Finish</string>
+    <string name="action_skip_setup">Skip for now</string>
+    <string name="label_auto_update_check">Automatic Update Check</string>
+    <string name="desc_auto_update_check">Check for updates on startup</string>
+    <string name="label_day">Day</string>
+    <string name="label_field_class">Class</string>
+    <string name="label_cover">Cover teacher</string>
+    <string name="label_replaced">Replaced teacher</string>
+    <string name="label_note">Note</string>
 
     <string name="home_no_entries">No substitutions available yet</string>
     <string name="home_retry">Retry</string>

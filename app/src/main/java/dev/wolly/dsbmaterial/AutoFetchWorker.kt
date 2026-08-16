@@ -11,8 +11,12 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import dev.wolly.dsbmaterial.api.DSBAuthException
 import dev.wolly.dsbmaterial.api.DSBMobileAPI
 import dev.wolly.dsbmaterial.data.DataStoreManager
+import dev.wolly.dsbmaterial.data.SubstitutionEntry
 import kotlinx.coroutines.flow.first
 
 class AutoFetchWorker(
@@ -27,14 +31,14 @@ class AutoFetchWorker(
         val className = dataStoreManager.classNameFlow.first() ?: return Result.failure()
         if (username.isEmpty() || password.isEmpty()) return Result.failure()
 
+        val gson = Gson()
+        val type = object : TypeToken<List<SubstitutionEntry>>() {}.type
         val lastKnownJson = dataStoreManager.archiveFlow.first() ?: ""
-        val lastKnownEntryCount = if (lastKnownJson.isNotEmpty()) {
+        val lastKnown = if (lastKnownJson.isNotEmpty()) {
             try {
-                val type = object : com.google.gson.reflect.TypeToken<List<dev.wolly.dsbmaterial.data.SubstitutionEntry>>() {}.type
-                val entries: List<dev.wolly.dsbmaterial.data.SubstitutionEntry> = com.google.gson.Gson().fromJson(lastKnownJson, type)
-                entries.size
-            } catch (_: Exception) { 0 }
-        } else 0
+                gson.fromJson<List<SubstitutionEntry>>(lastKnownJson, type).orEmpty()
+            } catch (_: Exception) { emptyList() }
+        } else emptyList()
 
         val customServerUrl = dataStoreManager.customServerUrlFlow.first() ?: ""
 
@@ -54,21 +58,20 @@ class AutoFetchWorker(
 
             val deduped = filtered.distinctBy { it.day + it.lesson + it.subject + it.room + it.art + it.text }
 
-            val newArchive = (deduped + (com.google.gson.Gson().fromJson<List<dev.wolly.dsbmaterial.data.SubstitutionEntry>>(
-                lastKnownJson,
-                object : com.google.gson.reflect.TypeToken<List<dev.wolly.dsbmaterial.data.SubstitutionEntry>>() {}.type
-            ).let { if (lastKnownJson.isEmpty()) emptyList() else it })).distinctBy {
+            val newArchive = (deduped + lastKnown).distinctBy {
                 it.day + it.lesson + it.subject + it.room + it.art + it.text
             }
 
-            dataStoreManager.saveArchive(com.google.gson.Gson().toJson(newArchive))
-
-            if (newArchive.size > lastKnownEntryCount) {
-                val newCount = newArchive.size - lastKnownEntryCount
-                sendNotification(newCount)
+            if (newArchive.size != lastKnown.size) {
+                dataStoreManager.saveArchive(gson.toJson(newArchive))
+                if (newArchive.size > lastKnown.size) {
+                    sendNotification(newArchive.size - lastKnown.size)
+                }
             }
 
             Result.success()
+        } catch (e: DSBAuthException) {
+            Result.failure()
         } catch (e: Exception) {
             Result.retry()
         }

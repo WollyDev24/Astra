@@ -66,8 +66,10 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import dev.wolly.dsbmaterial.R
 import dev.wolly.dsbmaterial.data.SubstitutionEntry
+import dev.wolly.dsbmaterial.api.UpdateChannel
 import dev.wolly.dsbmaterial.ui.MainViewModel
 import dev.wolly.dsbmaterial.ui.UiState
+import dev.wolly.dsbmaterial.ui.UpdateState
 import dev.wolly.dsbmaterial.ui.components.*
 import dev.wolly.dsbmaterial.ui.theme.fullRoundedShape
 import dev.wolly.dsbmaterial.ui.theme.springDefaultEffects
@@ -110,6 +112,7 @@ fun DSBApp(viewModel: MainViewModel) {
     val username by viewModel.username.collectAsState()
     val password by viewModel.password.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+    val updateChannel by viewModel.updateChannel.collectAsState()
     val context = LocalContext.current
     val openUpdateDownload = { url: String ->
         runCatching {
@@ -166,6 +169,7 @@ fun DSBApp(viewModel: MainViewModel) {
     var showAbout by remember { mutableStateOf(false) }
     var showDebug by remember { mutableStateOf(false) }
     var showCalendar by remember { mutableStateOf(false) }
+    var showUpdates by remember { mutableStateOf(false) }
     var calendarSelectedDay by remember { mutableStateOf<String?>(null) }
     var shareCardDay by remember { mutableStateOf<String?>(null) }
 
@@ -199,15 +203,11 @@ fun DSBApp(viewModel: MainViewModel) {
 
     val isTablet = isExpandedScreen()
 
-    val overlayActive = showCalendar || showThemePicker || showAbout || showDebug || shareCardDay != null
+    val overlayActive = showCalendar || showThemePicker || showAbout || showDebug || showUpdates || shareCardDay != null
 
-    val showNavCondition by remember(overlayActive, uiState) {
-        derivedStateOf {
-            !overlayActive && uiState !is UiState.NeedsLogin && uiState !is UiState.Loading && uiState !is UiState.SelectingClass
-        }
-    }
+    val showNavCondition = true
 
-    BackHandler(enabled = showSheet || overlayActive || showProfile || uiState is UiState.SelectingClass || selectedTab != 0) {
+    BackHandler(enabled = showSheet || overlayActive || showProfile || uiState is UiState.SelectingClass || uiState is UiState.SetupPreview || selectedTab != 0) {
         if (showProfile) {
             showProfile = false
         } else if (showSheet) {
@@ -229,12 +229,16 @@ fun DSBApp(viewModel: MainViewModel) {
             showThemePicker = false
         } else if (showAbout) {
             showAbout = false
+        } else if (showUpdates) {
+            showUpdates = false
         } else if (showDebug) {
             showDebug = false
         } else if (shareCardDay != null) {
             shareCardDay = null
         } else if (uiState is UiState.SelectingClass) {
             viewModel.cancelClassSelection()
+        } else if (uiState is UiState.SetupPreview) {
+            viewModel.finishSetup()
         } else {
             viewModel.setTab(0)
         }
@@ -284,37 +288,35 @@ fun DSBApp(viewModel: MainViewModel) {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    if (!overlayActive && uiState !is UiState.NeedsLogin && uiState !is UiState.Loading && uiState !is UiState.SelectingClass) {
-                        CollapsingTopBar(
-                            title = destinations[currentTab].label,
-                            actions = {
-                                if (currentTab == 0) {
-                                    ProfileButton(username = username, onClick = { showProfile = true })
-                                }
-                                if (currentTab == 1 && (uiState is UiState.Success || uiState is UiState.Idle)) {
-                                    val refreshing = uiState is UiState.Loading
-                                    val refreshRotation by animateFloatAsState(
-                                        targetValue = if (refreshing) 360f else 0f,
-                                        animationSpec = if (refreshing) infiniteRepeatable(
-                                            animation = tween(1000, easing = LinearEasing)
-                                        ) else tween(0),
-                                        label = "refresh_rotation"
+                    CollapsingTopBar(
+                        title = destinations[currentTab].label,
+                        actions = {
+                            if (currentTab == 0) {
+                                ProfileButton(username = username, onClick = { showProfile = true })
+                            }
+                            if (currentTab == 1 && (uiState is UiState.Success || uiState is UiState.Idle)) {
+                                val refreshing = uiState is UiState.Loading
+                                val refreshRotation by animateFloatAsState(
+                                    targetValue = if (refreshing) 360f else 0f,
+                                    animationSpec = if (refreshing) infiniteRepeatable(
+                                        animation = tween(1000, easing = LinearEasing)
+                                    ) else tween(0),
+                                    label = "refresh_rotation"
+                                )
+                                IconButton(onClick = { viewModel.fetchData() }) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = stringResource(R.string.action_refresh),
+                                        modifier = Modifier.rotate(refreshRotation)
                                     )
-                                    IconButton(onClick = { viewModel.fetchData() }) {
-                                        Icon(
-                                            Icons.Default.Refresh,
-                                            contentDescription = stringResource(R.string.action_refresh),
-                                            modifier = Modifier.rotate(refreshRotation)
-                                        )
-                                    }
-                                } else if (currentTab == 2 && archiveEntries.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.clearArchive() }) {
-                                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.action_clear_archive))
-                                    }
+                                }
+                            } else if (currentTab == 2 && archiveEntries.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.clearArchive() }) {
+                                    Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.action_clear_archive))
                                 }
                             }
-                        )
-                    }
+                        }
+                    )
                 },
                 bottomBar = {
                     if (!isTablet && showNavCondition) {
@@ -454,8 +456,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                     webServerUrls = webServerUrls,
                                     onToggleWebServer = viewModel::toggleWebServer,
                                     updateState = updateState,
-                                    onCheckUpdates = viewModel::checkForUpdates,
-                                    onDownloadUpdate = openUpdateDownload,
+                                    onOpenUpdates = { showUpdates = true },
                                     onAbout = { showAbout = true },
                                     onAddClass = viewModel::addSelectedClass,
                                     onRemoveClass = viewModel::removeSelectedClass
@@ -545,18 +546,21 @@ fun DSBApp(viewModel: MainViewModel) {
                 dynamicColor = dynamicColor,
                 allArchiveEntries = archiveEntries,
                 isRoomFirst = isRoomFirst,
-                calendarEntries = archiveEntries.groupBy { it.day }.map { (day, entries) -> day to entries.size }.sortedBy { day ->
+                calendarEntries = remember(archiveEntries) {
                     val dateRegex = Regex("""(\d{2})\.(\d{2})\.(\d{4})""")
-                    val match = dateRegex.find(day.first)
-                    if (match != null) {
-                        val (d, m, y) = match.destructured
-                        y.toLong() * 10000 + m.toLong() * 100 + d.toLong()
-                    } else Long.MAX_VALUE
+                    archiveEntries.groupBy { it.day }.map { (day, entries) -> day to entries.size }.sortedBy { day ->
+                        val match = dateRegex.find(day.first)
+                        if (match != null) {
+                            val (d, m, y) = match.destructured
+                            y.toLong() * 10000 + m.toLong() * 100 + d.toLong()
+                        } else Long.MAX_VALUE
+                    }
                 },
                 calendarSelectedDay = calendarSelectedDay,
                 onSelectTheme = { viewModel.setThemeIndex(it) },
                 onCloseThemePicker = { showThemePicker = false },
                 onCloseAbout = { showAbout = false },
+                onCloseUpdates = { showUpdates = false },
                 onOpenDebug = { showAbout = false; showDebug = true },
                 onCloseDebug = { showDebug = false },
                 onCalendarDayClick = { calendarSelectedDay = if (calendarSelectedDay == it) null else it },
@@ -570,7 +574,16 @@ fun DSBApp(viewModel: MainViewModel) {
                 onLogin = viewModel::login,
                 onLoginDemo = viewModel::loginDemo,
                 customServerUrl = customServerUrl,
-                onSetCustomServerUrl = viewModel::setCustomServerUrl
+                onSetCustomServerUrl = viewModel::setCustomServerUrl,
+                onSkipSetup = viewModel::skipSetup,
+                onFinishSetup = viewModel::finishSetup,
+                showUpdates = showUpdates,
+                updateState = updateState,
+                updateChannel = updateChannel,
+                onSelectChannel = viewModel::setUpdateChannel,
+                onInstallDev = { viewModel.installDevBuild() },
+                onDownloadUpdate = openUpdateDownload,
+                viewModel = viewModel
             )
         }
     }
@@ -762,11 +775,18 @@ fun OverlayContent(
     isRoomFirst: Boolean,
     calendarSelectedDay: String?,
     shareCardDay: String? = null,
+    showUpdates: Boolean = false,
+    updateState: UpdateState = UpdateState(),
+    updateChannel: UpdateChannel = UpdateChannel.STABLE,
+    onSelectChannel: (UpdateChannel) -> Unit = {},
+    onInstallDev: () -> Unit = {},
+    onDownloadUpdate: (String) -> Unit = {},
     onOpenShareCard: (String) -> Unit = {},
     onCloseShareCard: () -> Unit = {},
     onSelectTheme: (Int) -> Unit,
     onCloseThemePicker: () -> Unit,
     onCloseAbout: () -> Unit,
+    onCloseUpdates: () -> Unit = {},
     onOpenDebug: () -> Unit,
     onCloseDebug: () -> Unit,
     onCalendarDayClick: (String) -> Unit,
@@ -777,49 +797,84 @@ fun OverlayContent(
     onLogin: (String, String) -> Unit,
     onLoginDemo: () -> Unit,
     customServerUrl: String? = null,
-    onSetCustomServerUrl: (String) -> Unit = {}
+    onSetCustomServerUrl: (String) -> Unit = {},
+    onSkipSetup: () -> Unit = {},
+    onFinishSetup: () -> Unit = {},
+    viewModel: MainViewModel
 ) {
     androidx.compose.animation.AnimatedVisibility(
-        visible = showThemePicker || showAbout || showDebug || showCalendar || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.Loading || uiState is UiState.SelectingClass,
+        visible = showThemePicker || showAbout || showDebug || showCalendar || showUpdates || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.NeedsSetup || uiState is UiState.Loading || uiState is UiState.SelectingClass || uiState is UiState.SetupPreview,
         enter = fadeIn(tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)),
         exit = fadeOut(tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
     ) {
         when {
-            shareCardDay != null -> ShareCardScreen(
-                day = shareCardDay!!,
-                entries = (uiState as? UiState.Success)?.entries?.filter { it.day == shareCardDay }.orEmpty(),
-                isRoomFirst = isRoomFirst,
-                themeIndex = themeIndex,
-                onBack = onCloseShareCard
-            )
-            showCalendar -> CalendarViewScreen(
-                archiveDates = calendarEntries,
-                allArchiveEntries = allArchiveEntries,
-                isRoomFirst = isRoomFirst,
-                selectedDay = calendarSelectedDay,
-                onDayClick = onCalendarDayClick,
-                onBack = onCloseCalendar,
-                onShareDay = onOpenShareCard
-            )
-            showThemePicker -> ThemePickerScreen(
-                currentIndex = themeIndex,
-                dynamicColor = dynamicColor,
-                onSelect = onSelectTheme,
-                onBack = onCloseThemePicker
-            )
-            showAbout -> AboutScreen(onBack = onCloseAbout, onDebugTap = onOpenDebug)
-            showDebug -> DebugModeScreen(onBack = onCloseDebug)
+            shareCardDay != null -> PredictiveBackHost(onBack = onCloseShareCard) {
+                ShareCardScreen(
+                    day = shareCardDay!!,
+                    entries = (uiState as? UiState.Success)?.entries?.filter { it.day == shareCardDay }.orEmpty(),
+                    isRoomFirst = isRoomFirst,
+                    themeIndex = themeIndex,
+                    onBack = onCloseShareCard
+                )
+            }
+            showCalendar -> PredictiveBackHost(onBack = onCloseCalendar) {
+                CalendarViewScreen(
+                    archiveDates = calendarEntries,
+                    allArchiveEntries = allArchiveEntries,
+                    isRoomFirst = isRoomFirst,
+                    selectedDay = calendarSelectedDay,
+                    onDayClick = onCalendarDayClick,
+                    onBack = onCloseCalendar,
+                    onShareDay = onOpenShareCard
+                )
+            }
+            showUpdates -> PredictiveBackHost(onBack = onCloseUpdates) {
+                UpdateScreen(
+                    updateState = updateState,
+                    updateChannel = updateChannel,
+                    onSelectChannel = onSelectChannel,
+                    onInstallDev = onInstallDev,
+                    onDownloadUpdate = onDownloadUpdate,
+                    onBack = onCloseUpdates,
+                    viewModel = viewModel
+                )
+            }
+            showThemePicker -> PredictiveBackHost(onBack = onCloseThemePicker) {
+                ThemePickerScreen(
+                    currentIndex = themeIndex,
+                    dynamicColor = dynamicColor,
+                    onSelect = onSelectTheme,
+                    onBack = onCloseThemePicker
+                )
+            }
+            showAbout -> PredictiveBackHost(onBack = onCloseAbout) {
+                AboutScreen(onBack = onCloseAbout, onDebugTap = onOpenDebug)
+            }
+            showDebug -> PredictiveBackHost(onBack = onCloseDebug) {
+                DebugModeScreen(onBack = onCloseDebug)
+            }
             uiState is UiState.Loading -> LoadingScreen()
             uiState is UiState.SelectingClass -> {
                 val s = uiState
-                ClassSelectionScreen(
-                    classes = s.classes,
-                    onClassSelected = { cls -> onSelectClass(s.u, s.p, cls) },
-                    onShowAll = { onSelectAllClasses(s.u, s.p) },
-                    onBack = onCancelClassSelection
-                )
+                PredictiveBackHost(onBack = onCancelClassSelection) {
+                    ClassSelectionScreen(
+                        classes = s.classes,
+                        onClassSelected = { cls -> onSelectClass(s.u, s.p, cls) },
+                        onShowAll = { onSelectAllClasses(s.u, s.p) },
+                        onBack = onCancelClassSelection
+                    )
+                }
             }
             uiState is UiState.NeedsLogin -> LoginScreen(onLogin = onLogin, onLoginDemo = onLoginDemo, customServerUrl = customServerUrl, onSetCustomServerUrl = onSetCustomServerUrl)
+            uiState is UiState.NeedsSetup -> SetupScreen(
+                viewModel = viewModel,
+                onSkip = onSkipSetup,
+                customServerUrl = customServerUrl
+            )
+            uiState is UiState.SetupPreview -> SetupPreviewScreen(
+                viewModel = viewModel,
+                entries = uiState.entries
+            )
         }
     }
 }

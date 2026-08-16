@@ -74,11 +74,13 @@ fun ArchiveScreen(
                 }
             }
             grouped.forEach { (day, dayEntries) ->
-                item {
+                item(key = "day-$day") {
                     Text(day, style = MaterialTheme.typography.titleLargeEmphasized, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp, bottom = 8.dp))
                 }
                 val groups = groupSubstitutions(dayEntries)
                 items(groups, key = { substitutionGroupKey(it) }) { group ->
+                    val groupEntry = remember(group) { mergedGroupEntry(group) }
+                    val periodLabel = remember(group) { mergedPeriodLabel(group) }
                     Card(
                         modifier = Modifier.fillMaxWidth().animateItem(),
                         shape = MaterialTheme.shapes.extraLarge,
@@ -87,9 +89,9 @@ fun ArchiveScreen(
                         Row(modifier = Modifier.padding(dpv(16.dp, 28.dp)), verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.weight(1f)) {
                                 SubstitutionTableRowContent(
-                                    entry = mergedGroupEntry(group),
+                                    entry = groupEntry,
                                     isRoomFirst = isRoomFirst,
-                                    period = mergedPeriodLabel(group),
+                                    period = periodLabel,
                                     singleLine = true
                                 )
                             }

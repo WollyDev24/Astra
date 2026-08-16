@@ -7,11 +7,6 @@ package dev.wolly.dsbmaterial.ui.screens
 import android.graphics.Bitmap
 import android.os.Build
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,9 +82,6 @@ fun ShareCardScreen(
             )
         )
 
-    var screenEntered by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { screenEntered = true }
-
     fun shareImage() {
         if (isSharing) return
         isSharing = true
@@ -134,26 +126,20 @@ fun ShareCardScreen(
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
     ) {
-        AnimatedVisibility(
-            visible = screenEntered,
-            enter = slideInHorizontally(tween(400)) { -it } + fadeIn(tween(300)),
-            label = "share_header_enter"
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back), tint = MaterialTheme.colorScheme.primary)
-                }
-                Text(
-                    text = stringResource(R.string.label_share_card),
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back), tint = MaterialTheme.colorScheme.primary)
             }
+            Text(
+                text = stringResource(R.string.label_share_card),
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
 
         Column(
@@ -161,34 +147,27 @@ fun ShareCardScreen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            AnimatedVisibility(
-                visible = screenEntered,
-                enter = fadeIn(tween(300, delayMillis = 120)) +
-                    slideInVertically(tween(400, delayMillis = 120)) { -it / 2 },
-                label = "share_preview_enter"
-            ) {
-                Column {
-                    ShareSectionTitle(stringResource(R.string.label_preview), Modifier.padding(horizontal = 24.dp))
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                            .padding(vertical = 16.dp)
-                    ) {
-                        BoxWithConstraints(Modifier.fillMaxWidth()) {
-                            val cardWidth = 360.dp
-                            val scale = (maxWidth / cardWidth).coerceAtMost(1f)
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Box(
-                                    Modifier
-                                        .width(cardWidth)
-                                        .scale(scale)
-                                ) {
-                                    ShareCardCapture(graphicsLayer, day, entries, isRoomFirst, scheme, fontFamily)
-                                }
+            Column {
+                ShareSectionTitle(stringResource(R.string.label_preview), Modifier.padding(horizontal = 24.dp))
+                Spacer(Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .padding(vertical = 16.dp)
+                ) {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val cardWidth = 360.dp
+                        val scale = (maxWidth / cardWidth).coerceAtMost(1f)
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Box(
+                                Modifier
+                                    .width(cardWidth)
+                                    .scale(scale)
+                            ) {
+                                ShareCardCapture(graphicsLayer, day, entries, isRoomFirst, scheme, fontFamily)
                             }
                         }
                     }
@@ -197,109 +176,95 @@ fun ShareCardScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            AnimatedVisibility(
-                visible = screenEntered,
-                enter = fadeIn(tween(300, delayMillis = 200)) +
-                    slideInVertically(tween(300, delayMillis = 200)) { it / 4 },
-                label = "share_options_enter"
-            ) {
-                Column(Modifier.padding(horizontal = 24.dp)) {
-                    ShareSectionTitle(stringResource(R.string.label_colors))
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = !useMaterialYou,
-                            onClick = { useMaterialYou = false },
-                            label = { Text(stringResource(R.string.label_preset)) }
-                        )
-                        FilterChip(
-                            selected = useMaterialYou,
-                            onClick = { useMaterialYou = true },
-                            enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-                            label = { Text(stringResource(R.string.label_material_you)) }
-                        )
-                    }
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                ShareSectionTitle(stringResource(R.string.label_colors))
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !useMaterialYou,
+                        onClick = { useMaterialYou = false },
+                        label = { Text(stringResource(R.string.label_preset)) }
+                    )
+                    FilterChip(
+                        selected = useMaterialYou,
+                        onClick = { useMaterialYou = true },
+                        enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                        label = { Text(stringResource(R.string.label_material_you)) }
+                    )
+                }
 
-                    if (!useMaterialYou) {
-                        Spacer(Modifier.height(16.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            SeedPalettes.forEachIndexed { index, palette ->
-                                val isSelected = index == presetIndex
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(palette.scheme(dark = false).primary)
-                                        .then(
-                                            if (isSelected) {
-                                                Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
-                                        .clickable { presetIndex = index },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isSelected) {
-                                        Box(
+                if (!useMaterialYou) {
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SeedPalettes.forEachIndexed { index, palette ->
+                            val isSelected = index == presetIndex
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(palette.scheme(dark = false).primary)
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                        } else {
                                             Modifier
-                                                .size(10.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surface)
-                                        )
-                                    }
+                                        }
+                                    )
+                                    .clickable { presetIndex = index },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surface)
+                                    )
                                 }
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(28.dp))
                 }
+
+                Spacer(Modifier.height(28.dp))
             }
         }
 
-        AnimatedVisibility(
-            visible = screenEntered,
-            enter = slideInVertically(tween(400, delayMillis = 350)) { it } +
-                fadeIn(tween(300, delayMillis = 350)),
-            label = "share_action_enter"
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Column(
+            Button(
+                onClick = { shareImage() },
+                enabled = !isSharing,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .height(dpv(56.dp, 64.dp)),
+                shape = fullRoundedShape()
             ) {
-                Button(
-                    onClick = { shareImage() },
-                    enabled = !isSharing,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dpv(56.dp, 64.dp)),
-                    shape = fullRoundedShape()
-                ) {
-                    if (isSharing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.5.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.action_share_image),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                TextButton(
-                    onClick = { shareText() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                if (isSharing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.5.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
                     Text(
-                        text = stringResource(R.string.action_share_text),
-                        color = MaterialTheme.colorScheme.primary
+                        text = stringResource(R.string.action_share_image),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
+            }
+            TextButton(
+                onClick = { shareText() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(R.string.action_share_text),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

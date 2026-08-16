@@ -128,7 +128,7 @@ fun CalendarView(
                         modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                     )
                 }
-                items(entries.map { it.second }) { (day, count) ->
+                items(entries.map { it.second }, key = { (day, _) -> day }) { (day, count) ->
                     CalendarDayCard(day, count, isSelected = day == selectedDay, onClick = { onDayClick(day) })
                 }
             }
@@ -142,7 +142,7 @@ fun CalendarView(
                         modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
                     )
                 }
-                items(withoutDates) { (day, count) ->
+                items(withoutDates, key = { (day, _) -> day }) { (day, count) ->
                     CalendarDayCard(day, count, isSelected = day == selectedDay, onClick = { onDayClick(day) })
                 }
             }

@@ -15,9 +15,39 @@ data class AppUpdate(
     val downloadUrl: String
 )
 
+data class DevBuild(
+    val name: String,
+    val buildId: String,
+    val createdAt: String,
+    val archiveUrl: String
+)
+
+data class GitCommit(
+    val sha: String,
+    val message: String,
+    val author: String,
+    val date: String
+)
+
+enum class UpdateChannel(val key: String) {
+    STABLE("stable"),
+    BETA("beta"),
+    DEV("dev");
+
+    companion object {
+        fun fromKey(key: String): UpdateChannel =
+            entries.firstOrNull { it.key == key } ?: STABLE
+    }
+}
+
 object UpdateChecker {
     private const val TAG = "UpdateChecker"
-    private const val RELEASES_LATEST_URL = "https://api.github.com/repos/wollydev24/astra/releases/latest"
+    private const val GITHUB_BASE = "https://api.github.com/repos/wollydev24/astra"
+    private const val RELEASES_LATEST_URL = "$GITHUB_BASE/releases/latest"
+    private const val RELEASES_URL = "$GITHUB_BASE/releases"
+    private const val COMMITS_URL = "$GITHUB_BASE/commits"
+    private const val ARTIFACTS_URL = "$GITHUB_BASE/actions/artifacts"
+    private const val DEV_ARTIFACT_NAME = "astra-dev"
 
     fun isUpdateAvailable(latest: String): Boolean {
         val current = parseVersion(BuildConfig.VERSION_NAME)
@@ -39,39 +69,117 @@ object UpdateChecker {
             .split(".", "-", "+")
             .mapNotNull { it.toIntOrNull() }
 
-    suspend fun checkLatest(): AppUpdate? = withContext(Dispatchers.IO) {
+    private fun newRequest(url: String): Request = Request.Builder()
+        .url(url)
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Astra")
+        .build()
+
+    private fun parseRelease(json: JSONObject): AppUpdate {
+        val version = json.optString("tag_name", "").removePrefix("v")
+        val assets = json.optJSONArray("assets") ?: JSONArray()
+        var downloadUrl = ""
+        for (i in 0 until assets.length()) {
+            val asset = assets.getJSONObject(i)
+            if (asset.optString("name", "").endsWith(".apk", ignoreCase = true)) {
+                downloadUrl = asset.optString("browser_download_url", "")
+                break
+            }
+        }
+        if (downloadUrl.isEmpty()) downloadUrl = json.optString("html_url", "")
+        return AppUpdate(
+            version = version,
+            name = json.optString("name", version),
+            publishedAt = json.optString("published_at", ""),
+            downloadUrl = downloadUrl
+        )
+    }
+
+    suspend fun checkLatest(channel: UpdateChannel): AppUpdate? = withContext(Dispatchers.IO) {
         try {
-            val request = Request.Builder()
-                .url(RELEASES_LATEST_URL)
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "Astra")
-                .build()
-            val response = DSBNetwork.client.newCall(request).execute()
+            val url = when (channel) {
+                UpdateChannel.STABLE -> RELEASES_LATEST_URL
+                UpdateChannel.BETA -> "$RELEASES_URL?per_page=1"
+                UpdateChannel.DEV -> return@withContext null
+            }
+            val response = DSBNetwork.client.newCall(newRequest(url)).execute()
             if (!response.isSuccessful) {
                 Log.w(TAG, "GitHub API responded ${response.code}")
                 return@withContext null
             }
             val body = response.body?.string() ?: return@withContext null
-            val json = JSONObject(body)
-            val version = json.optString("tag_name", "").removePrefix("v")
-            val assets = json.optJSONArray("assets") ?: JSONArray()
-            var downloadUrl = ""
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                if (asset.optString("name", "").endsWith(".apk", ignoreCase = true)) {
-                    downloadUrl = asset.optString("browser_download_url", "")
-                    break
+            val json =
+                if (channel == UpdateChannel.BETA) {
+                    JSONArray(body).optJSONObject(0) ?: return@withContext null
+                } else {
+                    JSONObject(body)
                 }
-            }
-            if (downloadUrl.isEmpty()) downloadUrl = json.optString("html_url", "")
-            AppUpdate(
-                version = version,
-                name = json.optString("name", version),
-                publishedAt = json.optString("published_at", ""),
-                downloadUrl = downloadUrl
-            )
+            parseRelease(json)
         } catch (e: Exception) {
             Log.e(TAG, "Update check failed", e)
+            null
+        }
+    }
+
+    suspend fun fetchDevBuild(): DevBuild? = withContext(Dispatchers.IO) {
+        try {
+            val response = DSBNetwork.client.newCall(newRequest("$ARTIFACTS_URL?per_page=20")).execute()
+            if (!response.isSuccessful) {
+                Log.w(TAG, "GitHub artifacts API responded ${response.code}")
+                return@withContext null
+            }
+            val body = response.body?.string() ?: return@withContext null
+            val artifacts = JSONObject(body).optJSONArray("artifacts") ?: JSONArray()
+            var best: JSONObject? = null
+            for (i in 0 until artifacts.length()) {
+                val item = artifacts.optJSONObject(i) ?: continue
+                if (item.optString("name", "") != DEV_ARTIFACT_NAME) continue
+                if (item.optBoolean("expired", true)) continue
+                val createdAt = item.optString("created_at", "")
+                val current = best
+                if (current == null || createdAt > current.optString("created_at", "")) {
+                    best = item
+                }
+            }
+            val item = best ?: return@withContext null
+            DevBuild(
+                name = item.optString("name", DEV_ARTIFACT_NAME),
+                buildId = item.optString("id", ""),
+                createdAt = item.optString("created_at", ""),
+                archiveUrl = item.optString("archive_download_url", "")
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Dev build fetch failed", e)
+            null
+        }
+    }
+
+    suspend fun fetchCommits(limit: Int = 15): List<GitCommit>? = withContext(Dispatchers.IO) {
+        try {
+            val response = DSBNetwork.client.newCall(newRequest("$COMMITS_URL?path=app/&per_page=$limit")).execute()
+            if (!response.isSuccessful) {
+                Log.w(TAG, "GitHub commits API responded ${response.code}")
+                return@withContext null
+            }
+            val body = response.body?.string() ?: return@withContext null
+            val array = JSONArray(body)
+            val commits = mutableListOf<GitCommit>()
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val commit = item.optJSONObject("commit") ?: continue
+                val author = commit.optJSONObject("author")
+                val rawMessage = commit.optString("message", "").trim()
+                val message = rawMessage.lineSequence().firstOrNull()?.trim().orEmpty()
+                commits += GitCommit(
+                    sha = item.optString("sha", "").take(7),
+                    message = message,
+                    author = author?.optString("name", "") ?: "",
+                    date = author?.optString("date", "") ?: ""
+                )
+            }
+            commits
+        } catch (e: Exception) {
+            Log.e(TAG, "Commit fetch failed", e)
             null
         }
     }

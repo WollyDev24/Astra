@@ -601,6 +601,8 @@ fun SubstitutionTableRowGroup(
     isRoomFirst: Boolean
 ) {
     if (entries.isEmpty()) return
+    val groupEntry = remember(entries) { mergedGroupEntry(entries) }
+    val periodLabel = remember(entries) { mergedPeriodLabel(entries) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -609,9 +611,9 @@ fun SubstitutionTableRowGroup(
         )
     ) {
         SubstitutionTableRowContent(
-            entry = mergedGroupEntry(entries),
+            entry = groupEntry,
             isRoomFirst = isRoomFirst,
-            period = mergedPeriodLabel(entries)
+            period = periodLabel
         )
     }
 }
@@ -764,8 +766,10 @@ fun mergedPeriodLabel(entries: List<SubstitutionEntry>): String {
     return parts.joinToString(", ")
 }
 
+private val periodNumberRegex = Regex("\\d+")
+
 private fun periodNumbers(lesson: String): List<Int> =
-    Regex("\\d+").findAll(lesson).map { it.value.toInt() }.toList()
+    periodNumberRegex.findAll(lesson).map { it.value.toInt() }.toList()
 
 fun buildShareText(day: String, entries: List<SubstitutionEntry>, isRoomFirst: Boolean): String {
     val sb = StringBuilder()

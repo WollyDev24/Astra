@@ -3,7 +3,7 @@
     <string name="title_main">Astra</string>
     <string name="label_home">Start</string>
     <string name="label_plans">Pläne</string>
-    <string name="title_settings">Einstellungen</string>
+    <string name="title_settings">Anpassen</string>
     <string name="title_login">DSBmobile Login</string>
     <string name="title_select_class">Klasse auswählen</string>
     <string name="title_about">Über Astra</string>
@@ -47,6 +47,23 @@
     <string name="msg_update_error">Prüfung fehlgeschlagen</string>
     <string name="desc_update_error">Konnte nicht nach Updates suchen. Zum Wiederholen tippen.</string>
     <string name="action_download">Herunterladen</string>
+    <string name="label_recent_changes">Letzte Änderungen</string>
+    <string name="desc_recent_changes">Neueste Commits im App-Ordner</string>
+    <string name="msg_loading_commits">Lade letzte Änderungen…</string>
+    <string name="msg_commits_error">Letzte Änderungen konnten nicht geladen werden</string>
+    <string name="desc_commits_error">Prüfe deine Verbindung. Zum Wiederholen tippen.</string>
+    <string name="msg_no_commits">Keine letzten Änderungen</string>
+    <string name="label_current_version">Aktuelle Version: %1$s</string>
+    <string name="label_update_channel">Update-Kanal</string>
+    <string name="desc_update_channel">Nach welchen Builds gesucht wird</string>
+    <string name="channel_stable">Stabil</string>
+    <string name="channel_beta">Beta</string>
+    <string name="channel_dev">Dev</string>
+    <string name="msg_dev_available">Dev-Build verfügbar</string>
+    <string name="desc_dev_available">Build vom %1$s</string>
+    <string name="action_install">Installieren</string>
+    <string name="msg_downloading_build">Build wird heruntergeladen…</string>
+    <string name="msg_dev_install_error">Dev-Build konnte nicht heruntergeladen werden</string>
     
     <string name="desc_select_class">Wähle deine Klasse aus der Liste (Wegen einschränkungen werden nur klassen mit vertretungen angezeigt, wenn deine nicht angezeigt wird, gib sie manuell ein)</string>
     <string name="desc_swap_default">Standard-Zuordnung</string>
@@ -55,7 +72,7 @@
     <string name="desc_logout">Anmeldedaten entfernen und App zurücksetzen</string>
     <string name="desc_dynamic_color">Farben deines Hintergrundbildes nutzen (Android 12+)</string>
     <string name="desc_sort_period">Ordnet Vertretungen chronologisch</string>
-    <string name="desc_about">Version 2.0.0 • Entwickelt von WollyDev24</string>
+    <string name="desc_about">Version 2.1.0 • Entwickelt von WollyDev24</string>
 
     <string name="action_apply">Anwenden</string>
     <string name="msg_no_substitutions">Keine Vertretungen gefunden.</string>
@@ -127,6 +144,24 @@
     <string name="desc_floating_nav">Eine schwebende Pille statt der unteren Navigationsleiste anzeigen</string>
     <string name="action_clear_filter">Filter löschen</string>
     <string name="action_remove_class">Klasse entfernen</string>
+
+    <string name="title_setup">Willkommen bei Astra</string>
+    <string name="desc_setup_intro">Melde dich mit deinem DSBmobile-Konto an, um deine Vertretungen zu laden, und passe auf der nächsten Seite alles an.</string>
+    <string name="title_setup_customize">Mach es zu deinem</string>
+    <string name="desc_setup_customize_intro">Passe an, wie Vertretungen aussehen und sich verhalten. Die Vorschau unten aktualisiert sich live.</string>
+    <string name="label_setup_preferences">Einstellungen</string>
+    <string name="label_setup_preview_title">Vorschau deiner Vertretungen</string>
+    <string name="desc_setup_preview_intro">Das ist die erste gefundene Vertretung für deine Klasse. Schalte den Tauscher um, um Raum- und Typ-Werte zu vertauschen.</string>
+    <string name="desc_preview_placeholder">Beispieleintrag wird angezeigt</string>
+    <string name="action_finish_setup">Fertig</string>
+    <string name="action_skip_setup">Jetzt überspringen</string>
+    <string name="label_auto_update_check">Automatische Update-Prüfung</string>
+    <string name="desc_auto_update_check">Beim Start nach Updates suchen</string>
+    <string name="label_day">Tag</string>
+    <string name="label_field_class">Klasse</string>
+    <string name="label_cover">Vertretungslehrer</string>
+    <string name="label_replaced">Vertretener Lehrer</string>
+    <string name="label_note">Anmerkung</string>
 
     <string name="home_no_entries">Noch keine Vertretungen verfügbar</string>
     <string name="home_retry">Wiederholen</string>

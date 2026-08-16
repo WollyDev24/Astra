@@ -59,6 +59,12 @@ object LocalWebServer {
     @Volatile
     private var updatedAt: Long = 0L
 
+    @Volatile
+    private var cachedPayload: String? = null
+
+    @Volatile
+    private var cachedPayloadKey: String? = null
+
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning
 
@@ -146,6 +152,16 @@ object LocalWebServer {
         val context = appContext ?: return "{}"
         val dark = (context.resources.configuration.uiMode and
             Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val key = "$dark|$themeIndex|$dynamicColor|$isRoomFirst|$sortByPeriod|$updatedAt|${System.identityHashCode(parsedEntries)}"
+        if (key == cachedPayloadKey) return cachedPayload ?: "{}"
+        val payload = computePayload(dark)
+        cachedPayload = payload
+        cachedPayloadKey = key
+        return payload
+    }
+
+    private fun computePayload(dark: Boolean): String {
+        val context = appContext ?: return "{}"
         val scheme = currentScheme(context, dark)
         val theme = linkedMapOf<String, Any>(
             "dark" to dark,

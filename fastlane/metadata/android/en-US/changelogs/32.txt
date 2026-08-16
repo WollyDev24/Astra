@@ -1,0 +1,5 @@
+- Icon fix for AOSP/PixelUi
+- Proper Login Validation
+- New Font Slider
+- Update Checker
+-
