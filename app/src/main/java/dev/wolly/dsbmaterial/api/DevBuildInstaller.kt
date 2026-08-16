@@ -8,46 +8,30 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
-import java.util.zip.ZipInputStream
 
 object DevBuildInstaller {
     private const val TAG = "DevBuildInstaller"
 
-    suspend fun downloadApk(context: Context, archiveUrl: String): File? = withContext(Dispatchers.IO) {
+    suspend fun downloadApk(context: Context, apkUrl: String): File? = withContext(Dispatchers.IO) {
         try {
             val dir = File(context.cacheDir, "apk").apply { mkdirs() }
-            val zipFile = File(dir, "astra-dev.zip")
             val apkFile = File(dir, "astra-dev.apk")
             val response = DSBNetwork.client.newCall(
                 Request.Builder()
-                    .url(archiveUrl)
+                    .url(apkUrl)
                     .header("User-Agent", "Astra")
                     .build()
             ).execute()
             if (!response.isSuccessful) {
-                Log.w(TAG, "Artifact download responded ${response.code}")
+                Log.w(TAG, "APK download responded ${response.code}")
                 response.close()
                 return@withContext null
             }
             response.body?.byteStream()?.use { input ->
-                zipFile.outputStream().use { output -> input.copyTo(output) }
+                apkFile.outputStream().use { output -> input.copyTo(output) }
             }
             response.close()
-
-            ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
-                        apkFile.outputStream().use { out -> zis.copyTo(out) }
-                        zipFile.delete()
-                        return@withContext apkFile
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
-            }
-            zipFile.delete()
-            null
+            apkFile
         } catch (e: Exception) {
             Log.e(TAG, "Dev APK download failed", e)
             null

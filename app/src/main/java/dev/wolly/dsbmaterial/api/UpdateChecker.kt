@@ -15,13 +15,6 @@ data class AppUpdate(
     val downloadUrl: String
 )
 
-data class DevBuild(
-    val name: String,
-    val buildId: String,
-    val createdAt: String,
-    val archiveUrl: String
-)
-
 data class GitCommit(
     val sha: String,
     val message: String,
@@ -45,9 +38,9 @@ object UpdateChecker {
     private const val GITHUB_BASE = "https://api.github.com/repos/wollydev24/astra"
     private const val RELEASES_LATEST_URL = "$GITHUB_BASE/releases/latest"
     private const val RELEASES_URL = "$GITHUB_BASE/releases"
+    private const val DEV_RELEASE_TAG = "dev"
+    private const val DEV_RELEASE_URL = "$GITHUB_BASE/releases/tags/dev"
     private const val COMMITS_URL = "$GITHUB_BASE/commits"
-    private const val ARTIFACTS_URL = "$GITHUB_BASE/actions/artifacts"
-    private const val DEV_ARTIFACT_NAME = "astra-dev"
 
     fun isUpdateAvailable(latest: String): Boolean {
         val current = parseVersion(BuildConfig.VERSION_NAME)
@@ -99,8 +92,8 @@ object UpdateChecker {
         try {
             val url = when (channel) {
                 UpdateChannel.STABLE -> RELEASES_LATEST_URL
-                UpdateChannel.BETA -> "$RELEASES_URL?per_page=1"
-                UpdateChannel.DEV -> return@withContext null
+                UpdateChannel.BETA -> "$RELEASES_URL?per_page=5"
+                UpdateChannel.DEV -> DEV_RELEASE_URL
             }
             val response = DSBNetwork.client.newCall(newRequest(url)).execute()
             if (!response.isSuccessful) {
@@ -108,48 +101,19 @@ object UpdateChecker {
                 return@withContext null
             }
             val body = response.body?.string() ?: return@withContext null
-            val json =
-                if (channel == UpdateChannel.BETA) {
-                    JSONArray(body).optJSONObject(0) ?: return@withContext null
-                } else {
-                    JSONObject(body)
+            if (channel == UpdateChannel.BETA) {
+                val array = JSONArray(body)
+                for (i in 0 until array.length()) {
+                    val release = array.optJSONObject(i) ?: continue
+                    if (release.optString("tag_name", "") == DEV_RELEASE_TAG) continue
+                    if (release.optBoolean("draft", false)) continue
+                    return@withContext parseRelease(release)
                 }
-            parseRelease(json)
-        } catch (e: Exception) {
-            Log.e(TAG, "Update check failed", e)
-            null
-        }
-    }
-
-    suspend fun fetchDevBuild(): DevBuild? = withContext(Dispatchers.IO) {
-        try {
-            val response = DSBNetwork.client.newCall(newRequest("$ARTIFACTS_URL?per_page=20")).execute()
-            if (!response.isSuccessful) {
-                Log.w(TAG, "GitHub artifacts API responded ${response.code}")
                 return@withContext null
             }
-            val body = response.body?.string() ?: return@withContext null
-            val artifacts = JSONObject(body).optJSONArray("artifacts") ?: JSONArray()
-            var best: JSONObject? = null
-            for (i in 0 until artifacts.length()) {
-                val item = artifacts.optJSONObject(i) ?: continue
-                if (item.optString("name", "") != DEV_ARTIFACT_NAME) continue
-                if (item.optBoolean("expired", true)) continue
-                val createdAt = item.optString("created_at", "")
-                val current = best
-                if (current == null || createdAt > current.optString("created_at", "")) {
-                    best = item
-                }
-            }
-            val item = best ?: return@withContext null
-            DevBuild(
-                name = item.optString("name", DEV_ARTIFACT_NAME),
-                buildId = item.optString("id", ""),
-                createdAt = item.optString("created_at", ""),
-                archiveUrl = item.optString("archive_download_url", "")
-            )
+            parseRelease(JSONObject(body))
         } catch (e: Exception) {
-            Log.e(TAG, "Dev build fetch failed", e)
+            Log.e(TAG, "Update check failed", e)
             null
         }
     }

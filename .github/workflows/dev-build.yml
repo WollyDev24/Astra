@@ -11,6 +11,9 @@ concurrency:
   group: dev-build
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   dev-build:
     name: Build signed dev APK
@@ -54,6 +57,20 @@ jobs:
           VERSION_CODE=$((1000 + ${{ github.run_number }}))
           VERSION_NAME="2.1.0-dev.${{ github.run_number }}"
           ./gradlew assembleDev -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" --full-stacktrace
+
+      - name: Publish dev release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: Astra Dev
+          body: "Latest dev build from ${{ github.sha }}"
+          files: app/build/outputs/apk/dev/*.apk
+          prerelease: true
+          allowUpdates: true
+          replaces_old_assets: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload dev APK
         uses: actions/upload-artifact@v4

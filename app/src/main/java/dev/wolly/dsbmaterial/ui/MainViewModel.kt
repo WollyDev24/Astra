@@ -228,17 +228,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val start = SystemClock.elapsedRealtime()
             _updateState.value = _updateState.value.copy(status = UpdateCheckStatus.Checking, channel = channel)
-            val update = when (channel) {
-                UpdateChannel.DEV -> UpdateChecker.fetchDevBuild()?.let {
-                    AppUpdate(
-                        version = "dev",
-                        name = it.name,
-                        publishedAt = it.createdAt,
-                        downloadUrl = it.archiveUrl
-                    )
-                }
-                else -> UpdateChecker.checkLatest(channel)
-            }
+            val update = UpdateChecker.checkLatest(channel)
             ensureUpdateLoadFeel(start)
             _updateState.value = _updateState.value.copy(
                 status = when {
