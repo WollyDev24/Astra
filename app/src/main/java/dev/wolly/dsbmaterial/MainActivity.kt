@@ -18,12 +18,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MainViewModel = viewModel()
             val dynamicColor by viewModel.dynamicColor.collectAsState()
+            val amoledMode by viewModel.amoledMode.collectAsState()
             val themeIndex by viewModel.themeIndex.collectAsState()
             val useCustomFont by viewModel.useCustomFont.collectAsState()
             val fontRond by viewModel.fontRond.collectAsState()
             DSBMaterialTheme(
                 themeIndex = themeIndex,
                 dynamicColor = dynamicColor,
+                amoledMode = amoledMode,
                 useCustomFont = useCustomFont,
                 fontRond = fontRond
             ) {

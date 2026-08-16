@@ -95,6 +95,7 @@ fun DSBApp(viewModel: MainViewModel) {
     val isRoomFirst by viewModel.isRoomFirst.collectAsState()
     val sortByPeriod by viewModel.sortByPeriod.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
+    val amoledMode by viewModel.amoledMode.collectAsState()
     val themeIndex by viewModel.themeIndex.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val archiveEntries by viewModel.archive.collectAsState()
@@ -409,6 +410,8 @@ fun DSBApp(viewModel: MainViewModel) {
                                             cardAlpha = cardAlpha,
                                             isRefreshing = isRefreshing,
                                             onRefresh = { viewModel.fetchData() },
+                                            lastUpdated = lastUpdated,
+                                            isOffline = isOffline,
                                             onDayClick = { day, bounds ->
                                                 selectedDay = day
                                                 cardRect = bounds
@@ -431,6 +434,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                     isRoomFirst = isRoomFirst,
                                     sortByPeriod = sortByPeriod,
                                     dynamicColor = dynamicColor,
+                                    amoledMode = amoledMode,
                                     navHidden = navHidden,
                                     hapticsEnabled = hapticsEnabled,
                                     selectedClasses = selectedClasses,
@@ -440,6 +444,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                     onToggleOrder = viewModel::toggleColumnOrder,
                                     onToggleSort = viewModel::toggleSortByPeriod,
                                     onToggleDynamic = viewModel::toggleDynamicColor,
+                                    onToggleAmoled = viewModel::toggleAmoledMode,
                                     onToggleNavHidden = viewModel::toggleNavHidden,
                                     onToggleHaptics = viewModel::toggleHaptics,
                                     onOpenThemePicker = { showThemePicker = true },

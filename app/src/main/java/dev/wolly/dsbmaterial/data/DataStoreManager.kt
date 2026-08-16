@@ -22,6 +22,7 @@ class DataStoreManager(private val context: Context) {
         val CLASS_NAME = stringPreferencesKey("class_name")
         val SWAP_DATA = booleanPreferencesKey("swap_data")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val AMOLED_MODE = booleanPreferencesKey("amoled_mode")
         val SORT_PERIOD = booleanPreferencesKey("sort_period")
         val ARCHIVE = stringPreferencesKey("archive")
         val THEME_INDEX = intPreferencesKey("theme_index")
@@ -52,6 +53,7 @@ class DataStoreManager(private val context: Context) {
     val classNameFlow: Flow<String?> = context.dataStore.data.map { it[CLASS_NAME] }
     val swapDataFlow: Flow<Boolean> = context.dataStore.data.map { it[SWAP_DATA] ?: true }
     val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { it[DYNAMIC_COLOR] ?: true }
+    val amoledModeFlow: Flow<Boolean> = context.dataStore.data.map { it[AMOLED_MODE] ?: false }
     val sortPeriodFlow: Flow<Boolean> = context.dataStore.data.map { it[SORT_PERIOD] ?: true }
     val archiveFlow: Flow<String?> = context.dataStore.data.map { it[ARCHIVE] }
     val themeIndexFlow: Flow<Int> = context.dataStore.data.map { it[THEME_INDEX] ?: 0 }
@@ -94,6 +96,10 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun saveDynamicColorPreference(enabled: Boolean) {
         context.dataStore.edit { it[DYNAMIC_COLOR] = enabled }
+    }
+
+    suspend fun saveAmoledMode(enabled: Boolean) {
+        context.dataStore.edit { it[AMOLED_MODE] = enabled }
     }
 
     suspend fun saveThemeIndex(index: Int) {

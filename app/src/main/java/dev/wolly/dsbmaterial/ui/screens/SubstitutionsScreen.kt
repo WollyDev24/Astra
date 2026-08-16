@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -59,7 +60,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DayList(entries: List<SubstitutionEntry>, onDayClick: (String, Rect) -> Unit, selectedDay: String? = null, cardAlpha: Float = 1f, isRefreshing: Boolean = false, onRefresh: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun DayList(entries: List<SubstitutionEntry>, onDayClick: (String, Rect) -> Unit, selectedDay: String? = null, cardAlpha: Float = 1f, isRefreshing: Boolean = false, onRefresh: () -> Unit = {}, lastUpdated: Long? = null, isOffline: Boolean = false, modifier: Modifier = Modifier) {
     var filterQuery by remember { mutableStateOf("") }
 
     val allDayData = remember(entries) {
@@ -200,7 +201,10 @@ fun DayList(entries: List<SubstitutionEntry>, onDayClick: (String, Rect) -> Unit
                 ) {
                     if (filterQuery.isBlank()) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            FilterBar(filterQuery = filterQuery, onFilterChange = { filterQuery = it })
+                            Column {
+                                FilterBar(filterQuery = filterQuery, onFilterChange = { filterQuery = it })
+                                LastUpdatedCaption(lastUpdated = lastUpdated, isOffline = isOffline)
+                            }
                         }
                     }
                     items(count = filteredDays.size, key = { filteredDays[it] }) { index ->
@@ -240,7 +244,10 @@ fun DayList(entries: List<SubstitutionEntry>, onDayClick: (String, Rect) -> Unit
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = pad, verticalArrangement = Arrangement.spacedBy(spacing)) {
                     item {
-                        FilterBar(filterQuery = filterQuery, onFilterChange = { filterQuery = it })
+                        Column {
+                            FilterBar(filterQuery = filterQuery, onFilterChange = { filterQuery = it })
+                            LastUpdatedCaption(lastUpdated = lastUpdated, isOffline = isOffline)
+                        }
                     }
                     columnItems(filteredDays, key = { it }) { day ->
                         val isCurrentDay = isToday && day.lowercase().startsWith(todayDayName.lowercase())
@@ -276,6 +283,51 @@ fun FilterBar(filterQuery: String, onFilterChange: (String) -> Unit) {
             focusedBorderColor = MaterialTheme.colorScheme.primary
         )
     )
+}
+
+@Composable
+private fun LastUpdatedCaption(lastUpdated: Long?, isOffline: Boolean) {
+    if (lastUpdated == null && !isOffline) return
+    val stale = lastUpdated != null && System.currentTimeMillis() - lastUpdated > 24 * 60 * 60 * 1000L
+    val color = when {
+        isOffline -> MaterialTheme.colorScheme.error
+        stale -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Schedule,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = when {
+                isOffline -> stringResource(R.string.home_offline)
+                stale && lastUpdated != null -> stringResource(R.string.home_last_updated, formatUpdatedTime(lastUpdated))
+                lastUpdated != null -> stringResource(R.string.home_last_updated, formatUpdatedTime(lastUpdated))
+                else -> stringResource(R.string.home_offline)
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = color
+        )
+    }
+}
+
+private val updatedTimeFormat: java.text.DateFormat by lazy {
+    java.text.DateFormat.getDateTimeInstance(
+        java.text.DateFormat.SHORT,
+        java.text.DateFormat.SHORT
+    )
+}
+
+private fun formatUpdatedTime(timestamp: Long): String {
+    val date = java.util.Date(timestamp)
+    return updatedTimeFormat.format(date)
 }
 
 @Composable

@@ -122,7 +122,7 @@ fun AboutScreen(onBack: () -> Unit, onDebugTap: () -> Unit = {}) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(stringResource(R.string.title_main), style = MaterialTheme.typography.headlineLargeEmphasized, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                    Text(stringResource(R.string.desc_about), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.desc_about, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.height(24.dp))

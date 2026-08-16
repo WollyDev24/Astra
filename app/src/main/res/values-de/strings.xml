@@ -32,6 +32,7 @@
     <string name="label_room">Raum</string>
     <string name="label_type">Art</string>
     <string name="label_dynamic_color">Dynamische Farben</string>
+    <string name="label_amoled_mode">AMOLED-Modus</string>
     <string name="label_sort_period">Nach Stunde sortieren</string>
     <string name="label_about">Über</string>
     <string name="label_archive">Archiv</string>
@@ -72,8 +73,9 @@
     <string name="desc_switch_class">Anderen Klassenfilter wählen</string>
     <string name="desc_logout">Anmeldedaten entfernen und App zurücksetzen</string>
     <string name="desc_dynamic_color">Farben deines Hintergrundbildes nutzen (Android 12+)</string>
+    <string name="desc_amoled_mode">Reines Schwarz im Dark Mode für OLED-Bildschirme</string>
     <string name="desc_sort_period">Ordnet Vertretungen chronologisch</string>
-    <string name="desc_about">Version 2.1.0 • Entwickelt von WollyDev24</string>
+    <string name="desc_about">Version %1$s • Entwickelt von WollyDev24</string>
 
     <string name="action_apply">Anwenden</string>
     <string name="msg_no_substitutions">Keine Vertretungen gefunden.</string>

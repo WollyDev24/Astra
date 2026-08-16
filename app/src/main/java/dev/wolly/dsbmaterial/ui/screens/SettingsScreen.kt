@@ -53,6 +53,7 @@ fun SettingsScreen(
     isRoomFirst: Boolean,
     sortByPeriod: Boolean,
     dynamicColor: Boolean,
+    amoledMode: Boolean = false,
     navHidden: Boolean,
     hapticsEnabled: Boolean = true,
     selectedClasses: List<String> = emptyList(),
@@ -62,6 +63,7 @@ fun SettingsScreen(
     onToggleOrder: () -> Unit,
     onToggleSort: () -> Unit,
     onToggleDynamic: () -> Unit,
+    onToggleAmoled: () -> Unit = {},
     onToggleNavHidden: () -> Unit,
     onToggleHaptics: () -> Unit = {},
     onOpenThemePicker: () -> Unit,
@@ -127,6 +129,15 @@ fun SettingsScreen(
                     iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = dynamicColor,
                     trailing = { ExpressiveSwitch(checked = dynamicColor, onCheckedChange = { onToggleDynamic() }) }
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.label_amoled_mode),
+                    description = stringResource(R.string.desc_amoled_mode),
+                    icon = Icons.Default.NightsStay,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    isActive = amoledMode,
+                    trailing = { ExpressiveSwitch(checked = amoledMode, onCheckedChange = { onToggleAmoled() }) }
                 )
                 SettingsDivider()
                 SettingsRow(
@@ -561,7 +572,7 @@ fun SettingsScreen(
             SettingCard {
                 SettingsRow(
                     title = stringResource(R.string.label_about),
-                    description = stringResource(R.string.desc_about),
+                    description = stringResource(R.string.desc_about, BuildConfig.VERSION_NAME),
                     icon = Icons.Default.Info,
                     iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     iconTint = MaterialTheme.colorScheme.onTertiaryContainer,

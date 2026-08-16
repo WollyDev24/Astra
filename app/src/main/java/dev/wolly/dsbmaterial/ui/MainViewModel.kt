@@ -92,6 +92,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val dynamicColor: StateFlow<Boolean> = dataStoreManager.dynamicColorFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val amoledMode: StateFlow<Boolean> = dataStoreManager.amoledModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val sortByPeriod: StateFlow<Boolean> = dataStoreManager.sortPeriodFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -461,6 +464,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             dataStoreManager.saveDynamicColorPreference(!dynamicColor.value)
             LocalWebServer.setSettings(isRoomFirst.value, sortByPeriod.value, themeIndex.value, !dynamicColor.value)
+            updateWidget()
+        }
+    }
+
+    fun toggleAmoledMode() {
+        viewModelScope.launch {
+            dataStoreManager.saveAmoledMode(!amoledMode.value)
             updateWidget()
         }
     }
