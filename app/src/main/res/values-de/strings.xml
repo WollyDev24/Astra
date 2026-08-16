@@ -46,7 +46,6 @@
     <string name="desc_up_to_date">Astra ist auf dem neuesten Stand</string>
     <string name="msg_update_error">Prüfung fehlgeschlagen</string>
     <string name="desc_update_error">Konnte nicht nach Updates suchen. Zum Wiederholen tippen.</string>
-    <string name="action_download">Herunterladen</string>
     <string name="label_recent_changes">Letzte Änderungen</string>
     <string name="desc_recent_changes">Neueste Commits im App-Ordner</string>
     <string name="msg_loading_commits">Lade letzte Änderungen…</string>
@@ -63,7 +62,7 @@
     <string name="desc_dev_available">Build vom %1$s</string>
     <string name="action_install">Installieren</string>
     <string name="msg_downloading_build">Build wird heruntergeladen…</string>
-    <string name="msg_dev_install_error">Dev-Build konnte nicht heruntergeladen werden</string>
+    <string name="msg_update_install_error">Update konnte nicht heruntergeladen werden</string>
     <string name="action_expand">Mehr anzeigen</string>
     <string name="action_collapse">Weniger anzeigen</string>
     
@@ -144,6 +143,8 @@
     <string name="action_reset">Zurücksetzen</string>
     <string name="label_floating_nav">Schwebende Navigationsleiste</string>
     <string name="desc_floating_nav">Eine schwebende Pille statt der unteren Navigationsleiste anzeigen</string>
+    <string name="label_haptics">Haptik</string>
+    <string name="desc_haptics">Bei Taps, Drags und Schiebereglern vibrieren</string>
     <string name="action_clear_filter">Filter löschen</string>
     <string name="action_remove_class">Klasse entfernen</string>
 

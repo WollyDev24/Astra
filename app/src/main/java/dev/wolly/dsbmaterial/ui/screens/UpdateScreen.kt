@@ -70,8 +70,7 @@ fun UpdateScreen(
     updateState: UpdateState,
     updateChannel: UpdateChannel,
     onSelectChannel: (UpdateChannel) -> Unit,
-    onInstallDev: () -> Unit,
-    onDownloadUpdate: (String) -> Unit,
+    onInstall: () -> Unit,
     onBack: () -> Unit,
     viewModel: MainViewModel
 ) {
@@ -112,8 +111,7 @@ fun UpdateScreen(
                     FlyInFromFirstCard(index = 1) {
                         UpdateStatusCard(
                             updateState = updateState,
-                            onDownloadUpdate = onDownloadUpdate,
-                            onInstallDev = onInstallDev,
+                            onInstall = onInstall,
                             onCheckUpdates = { viewModel.checkForUpdates() }
                         )
                     }
@@ -253,8 +251,7 @@ private fun UpdateChannelCard(
 @Composable
 private fun UpdateStatusCard(
     updateState: UpdateState,
-    onDownloadUpdate: (String) -> Unit,
-    onInstallDev: () -> Unit,
+    onInstall: () -> Unit,
     onCheckUpdates: () -> Unit
 ) {
     val status = updateState.status
@@ -321,20 +318,13 @@ private fun UpdateStatusCard(
                 when (status) {
                     UpdateCheckStatus.Available -> {
                         Button(
-                            onClick = {
-                                if (isDev) {
-                                    onInstallDev()
-                                } else {
-                                    updateState.update?.downloadUrl?.let(onDownloadUpdate)
-                                    Unit
-                                }
-                            },
+                            onClick = onInstall,
                             shape = fullRoundedShape(),
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(if (isDev) R.string.action_install else R.string.action_download))
+                            Text(stringResource(R.string.action_install))
                         }
                         TextButton(
                             onClick = onCheckUpdates,

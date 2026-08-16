@@ -13,7 +13,7 @@ import dev.wolly.dsbmaterial.DSBWidget
 import dev.wolly.dsbmaterial.LocalWebServer
 import dev.wolly.dsbmaterial.R
 import dev.wolly.dsbmaterial.api.AppUpdate
-import dev.wolly.dsbmaterial.api.DevBuildInstaller
+import dev.wolly.dsbmaterial.api.UpdateInstaller
 import dev.wolly.dsbmaterial.api.GitCommit
 import dev.wolly.dsbmaterial.api.DSBAuthException
 import dev.wolly.dsbmaterial.api.DSBMobileAPI
@@ -135,6 +135,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .map { UpdateChannel.fromKey(it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, UpdateChannel.STABLE)
 
+    val hapticsEnabled: StateFlow<Boolean> = dataStoreManager.hapticsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     private val _archive = MutableStateFlow<List<SubstitutionEntry>>(emptyList())
     val archive: StateFlow<List<SubstitutionEntry>> = _archive
 
@@ -211,9 +214,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadCachedSnapshot()
         scheduleAutoFetchOnStartup()
         viewModelScope.launch {
+            dataStoreManager.hapticsFlow.collect { Haptics.setEnabled(it) }
+        }
+        viewModelScope.launch {
             if (dataStoreManager.autoUpdateCheckFlow.first()) {
                 checkForUpdates()
             }
+        }
+    }
+
+    fun toggleHaptics() {
+        viewModelScope.launch {
+            dataStoreManager.saveHapticsEnabled(!hapticsEnabled.value)
         }
     }
 
@@ -242,17 +254,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun installDevBuild() {
+    fun installUpdate() {
         val url = _updateState.value.update?.downloadUrl ?: return
         if (_updateState.value.installing) return
         viewModelScope.launch {
             _updateState.value = _updateState.value.copy(installing = true)
-            val apk = DevBuildInstaller.downloadApk(getApplication(), url)
+            val apk = UpdateInstaller.downloadApk(getApplication(), url)
             _updateState.value = _updateState.value.copy(installing = false)
             if (apk == null) {
-                Toast.makeText(getApplication(), R.string.msg_dev_install_error, Toast.LENGTH_LONG).show()
+                Toast.makeText(getApplication(), R.string.msg_update_install_error, Toast.LENGTH_LONG).show()
             } else {
-                DevBuildInstaller.install(getApplication(), apk)
+                UpdateInstaller.install(getApplication(), apk)
             }
         }
     }

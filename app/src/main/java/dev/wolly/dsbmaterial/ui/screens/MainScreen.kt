@@ -2,8 +2,6 @@
 package dev.wolly.dsbmaterial.ui.screens
 
 import android.Manifest
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,11 +53,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -70,6 +70,7 @@ import dev.wolly.dsbmaterial.api.UpdateChannel
 import dev.wolly.dsbmaterial.ui.MainViewModel
 import dev.wolly.dsbmaterial.ui.UiState
 import dev.wolly.dsbmaterial.ui.UpdateState
+import dev.wolly.dsbmaterial.ui.feedback
 import dev.wolly.dsbmaterial.ui.components.*
 import dev.wolly.dsbmaterial.ui.theme.fullRoundedShape
 import dev.wolly.dsbmaterial.ui.theme.springDefaultEffects
@@ -78,6 +79,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 private data class Destination(
@@ -113,13 +115,8 @@ fun DSBApp(viewModel: MainViewModel) {
     val password by viewModel.password.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val updateChannel by viewModel.updateChannel.collectAsState()
-    val context = LocalContext.current
-    val openUpdateDownload = { url: String ->
-        runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        }
-        Unit
-    }
+    val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
+    val haptics = LocalHapticFeedback.current
 
     val destinations = listOf(
         Destination(stringResource(R.string.label_home), Icons.Filled.Home, Icons.Outlined.Home),
@@ -156,6 +153,16 @@ fun DSBApp(viewModel: MainViewModel) {
                 viewModel.setTab(page)
             }
         }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collect {
+                if (pagerState.isScrollInProgress) {
+                    haptics.feedback(HapticFeedbackType.TextHandleMove)
+                }
+            }
     }
 
     val sheetState = rememberModalBottomSheetState()
@@ -332,7 +339,10 @@ fun DSBApp(viewModel: MainViewModel) {
                                     val selected = currentTab == index
                                     NavigationBarItem(
                                         selected = selected,
-                                        onClick = { viewModel.setTab(index) },
+                                        onClick = {
+                                            haptics.feedback(HapticFeedbackType.LongPress)
+                                            viewModel.setTab(index)
+                                        },
                                         icon = {
                                             Icon(
                                                 if (selected) destination.selectedIcon else destination.unselectedIcon,
@@ -422,6 +432,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                     sortByPeriod = sortByPeriod,
                                     dynamicColor = dynamicColor,
                                     navHidden = navHidden,
+                                    hapticsEnabled = hapticsEnabled,
                                     selectedClasses = selectedClasses,
                                     autoFetchEnabled = autoFetchEnabled,
                                     autoFetchInterval = autoFetchInterval,
@@ -430,6 +441,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                     onToggleSort = viewModel::toggleSortByPeriod,
                                     onToggleDynamic = viewModel::toggleDynamicColor,
                                     onToggleNavHidden = viewModel::toggleNavHidden,
+                                    onToggleHaptics = viewModel::toggleHaptics,
                                     onOpenThemePicker = { showThemePicker = true },
                                     useCustomFont = useCustomFont,
                                     fontRond = fontRond,
@@ -581,8 +593,7 @@ fun DSBApp(viewModel: MainViewModel) {
                 updateState = updateState,
                 updateChannel = updateChannel,
                 onSelectChannel = viewModel::setUpdateChannel,
-                onInstallDev = { viewModel.installDevBuild() },
-                onDownloadUpdate = openUpdateDownload,
+                onInstall = { viewModel.installUpdate() },
                 viewModel = viewModel
             )
         }
@@ -596,9 +607,11 @@ private fun FloatingNavigationBar(
     onSelect: (Int) -> Unit
 ) {
     val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
     var itemRects by remember { mutableStateOf<Map<Int, IntRect>>(emptyMap()) }
     var dragX by remember { mutableStateOf<Float?>(null) }
     var dragIndex by remember { mutableStateOf<Int?>(null) }
+    var lastDragHapticIndex by remember { mutableStateOf<Int?>(null) }
 
     fun nearestIndex(x: Float): Int? =
         itemRects.minByOrNull { (_, r) -> abs((r.left + r.width / 2f) - x) }?.key
@@ -666,11 +679,18 @@ private fun FloatingNavigationBar(
                             detectHorizontalDragGestures(
                                 onDragStart = { offset ->
                                     dragX = offset.x
-                                    dragIndex = nearestIndex(offset.x)
+                                    val index = nearestIndex(offset.x)
+                                    dragIndex = index
+                                    lastDragHapticIndex = index
                                 },
                                 onHorizontalDrag = { change, _ ->
                                     dragX = change.position.x
-                                    dragIndex = nearestIndex(change.position.x)
+                                    val index = nearestIndex(change.position.x)
+                                    if (index != lastDragHapticIndex) {
+                                        lastDragHapticIndex = index
+                                        haptics.feedback(HapticFeedbackType.TextHandleMove)
+                                    }
+                                    dragIndex = index
                                 },
                                 onDragEnd = {
                                     dragX?.let { x ->
@@ -679,10 +699,12 @@ private fun FloatingNavigationBar(
                                         index?.let(onSelect)
                                     }
                                     dragX = null
+                                    lastDragHapticIndex = null
                                 },
                                 onDragCancel = {
                                     dragX = null
                                     dragIndex = null
+                                    lastDragHapticIndex = null
                                 }
                             )
                         }
@@ -702,7 +724,10 @@ private fun FloatingNavigationBar(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
-                                ) { onSelect(index) }
+                                ) {
+                                    haptics.feedback(HapticFeedbackType.LongPress)
+                                    onSelect(index)
+                                }
                                 .onGloballyPositioned {
                                     val bounds = it.boundsInParent()
                                     itemRects = itemRects + (index to IntRect(
@@ -779,8 +804,7 @@ fun OverlayContent(
     updateState: UpdateState = UpdateState(),
     updateChannel: UpdateChannel = UpdateChannel.STABLE,
     onSelectChannel: (UpdateChannel) -> Unit = {},
-    onInstallDev: () -> Unit = {},
-    onDownloadUpdate: (String) -> Unit = {},
+    onInstall: () -> Unit = {},
     onOpenShareCard: (String) -> Unit = {},
     onCloseShareCard: () -> Unit = {},
     onSelectTheme: (Int) -> Unit,
@@ -833,8 +857,7 @@ fun OverlayContent(
                     updateState = updateState,
                     updateChannel = updateChannel,
                     onSelectChannel = onSelectChannel,
-                    onInstallDev = onInstallDev,
-                    onDownloadUpdate = onDownloadUpdate,
+                    onInstall = onInstall,
                     onBack = onCloseUpdates,
                     viewModel = viewModel
                 )

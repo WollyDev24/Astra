@@ -46,7 +46,6 @@
     <string name="desc_up_to_date">Astra is on the latest version</string>
     <string name="msg_update_error">Check failed</string>
     <string name="desc_update_error">Could not check for updates. Tap to retry.</string>
-    <string name="action_download">Download</string>
     <string name="label_recent_changes">Recent changes</string>
     <string name="desc_recent_changes">Latest commits to the app folder</string>
     <string name="msg_loading_commits">Loading recent changes…</string>
@@ -63,7 +62,7 @@
     <string name="desc_dev_available">Build from %1$s</string>
     <string name="action_install">Install</string>
     <string name="msg_downloading_build">Downloading build…</string>
-    <string name="msg_dev_install_error">Could not download the dev build</string>
+    <string name="msg_update_install_error">Could not download the update</string>
     <string name="action_expand">Show more</string>
     <string name="action_collapse">Show less</string>
     
@@ -156,6 +155,8 @@
     <string name="action_reset">Reset</string>
     <string name="label_floating_nav">Floating Nav Bar</string>
     <string name="desc_floating_nav">Show a floating pill instead of the bottom navigation bar</string>
+    <string name="label_haptics">Haptics</string>
+    <string name="desc_haptics">Vibrate on taps, drags and sliders</string>
     <string name="action_clear_filter">Clear filter</string>
     <string name="action_remove_class">Remove class</string>
 

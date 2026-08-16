@@ -33,8 +33,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +51,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +63,8 @@ import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.Morph
 import dev.wolly.dsbmaterial.ui.theme.springDefaultSpatial
 import dev.wolly.dsbmaterial.ui.theme.springDefaultEffects
+import dev.wolly.dsbmaterial.ui.feedback
+import kotlin.math.roundToInt
 import kotlin.math.max
 import kotlin.math.min
 
@@ -129,6 +136,7 @@ fun ExpressiveSwitch(
     val trackHeight = 32.dp
     val thumbSize = 24.dp
     val padding = 4.dp
+    val haptics = LocalHapticFeedback.current
 
     Box(
         modifier = modifier
@@ -140,7 +148,10 @@ fun ExpressiveSwitch(
                 role = Role.Switch
                 toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
             }
-            .clickable { onCheckedChange() },
+            .clickable {
+                haptics.feedback(HapticFeedbackType.LongPress)
+                onCheckedChange()
+            },
         contentAlignment = Alignment.CenterStart
     ) {
         val thumbX by animateDpAsState(
@@ -182,6 +193,24 @@ fun FontSlider(
     displayValue: (Float) -> String,
     onValueChangeFinished: () -> Unit = {}
 ) {
+    val haptics = LocalHapticFeedback.current
+    val hasSteps = steps > 0
+    val tickCount = steps + 2
+    val span = valueRange.endInclusive - valueRange.start
+    val tickIndex = when {
+        hasSteps && span != 0f ->
+            ((((value - valueRange.start) / span) * (tickCount - 1)).roundToInt()).coerceIn(0, tickCount - 1)
+        !hasSteps && span >= 1f -> (value - valueRange.start).roundToInt()
+        else -> 0
+    }
+    var lastTickIndex by remember { mutableStateOf(tickIndex) }
+    LaunchedEffect(tickIndex) {
+        if (tickIndex != lastTickIndex) {
+            haptics.feedback(HapticFeedbackType.TextHandleMove)
+            lastTickIndex = tickIndex
+        }
+    }
+
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -203,7 +232,10 @@ fun FontSlider(
         Slider(
             value = value,
             onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
+            onValueChangeFinished = {
+                onValueChangeFinished()
+                if (!hasSteps) haptics.feedback(HapticFeedbackType.LongPress)
+            },
             valueRange = valueRange,
             steps = steps,
             thumb = { sliderState ->

@@ -10,6 +10,7 @@ import dev.wolly.dsbmaterial.ui.theme.springDefaultEffects
 import dev.wolly.dsbmaterial.ui.theme.springDefaultSpatial
 import dev.wolly.dsbmaterial.ui.UpdateCheckStatus
 import dev.wolly.dsbmaterial.ui.UpdateState
+import dev.wolly.dsbmaterial.ui.feedback
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.MutableTransitionState
@@ -40,9 +41,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -50,6 +54,7 @@ fun SettingsScreen(
     sortByPeriod: Boolean,
     dynamicColor: Boolean,
     navHidden: Boolean,
+    hapticsEnabled: Boolean = true,
     selectedClasses: List<String> = emptyList(),
     autoFetchEnabled: Boolean = false,
     autoFetchInterval: Int = 30,
@@ -58,6 +63,7 @@ fun SettingsScreen(
     onToggleSort: () -> Unit,
     onToggleDynamic: () -> Unit,
     onToggleNavHidden: () -> Unit,
+    onToggleHaptics: () -> Unit = {},
     onOpenThemePicker: () -> Unit,
     useCustomFont: Boolean = false,
     fontRond: Float = 0f,
@@ -100,7 +106,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.action_swap_data),
                     description = if (isRoomFirst) stringResource(R.string.desc_swap_default) else stringResource(R.string.desc_swap_active),
                     icon = Icons.Default.SwapHoriz,
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = !isRoomFirst,
                     trailing = { ExpressiveSwitch(checked = !isRoomFirst, onCheckedChange = { onToggleOrder() }) }
                 )
@@ -109,7 +115,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_sort_period),
                     description = stringResource(R.string.desc_sort_period),
                     icon = Icons.AutoMirrored.Filled.Sort,
-                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = sortByPeriod,
                     trailing = { ExpressiveSwitch(checked = sortByPeriod, onCheckedChange = { onToggleSort() }) }
                 )
@@ -118,7 +124,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_dynamic_color),
                     description = stringResource(R.string.desc_dynamic_color),
                     icon = Icons.Default.Palette,
-                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = dynamicColor,
                     trailing = { ExpressiveSwitch(checked = dynamicColor, onCheckedChange = { onToggleDynamic() }) }
                 )
@@ -127,16 +133,26 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_floating_nav),
                     description = stringResource(R.string.desc_floating_nav),
                     icon = Icons.Default.Circle,
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = navHidden,
                     trailing = { ExpressiveSwitch(checked = navHidden, onCheckedChange = { onToggleNavHidden() }) }
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.label_haptics),
+                    description = stringResource(R.string.desc_haptics),
+                    icon = Icons.Default.Vibration,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    isActive = hapticsEnabled,
+                    trailing = { ExpressiveSwitch(checked = hapticsEnabled, onCheckedChange = { onToggleHaptics() }) }
                 )
                 SettingsDivider()
                 SettingsRow(
                     title = stringResource(R.string.label_typography),
                     description = stringResource(R.string.desc_custom_font),
                     icon = Icons.Default.FormatSize,
-                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = useCustomFont,
                     trailing = { ExpressiveSwitch(checked = useCustomFont, onCheckedChange = { onToggleCustomFont() }) }
                 )
@@ -179,7 +195,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_auto_fetch),
                     description = stringResource(R.string.desc_auto_fetch),
                     icon = Icons.Default.Sync,
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = autoFetchEnabled,
                     trailing = { ExpressiveSwitch(checked = autoFetchEnabled, onCheckedChange = { onToggleAutoFetch() }) }
                 )
@@ -188,13 +204,23 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_notifications),
                     description = stringResource(R.string.desc_notifications),
                     icon = Icons.Default.Notifications,
-                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     isActive = notificationsEnabled,
                     trailing = { ExpressiveSwitch(checked = notificationsEnabled, onCheckedChange = { onToggleNotifications() }) }
                 )
                 if (autoFetchEnabled) {
                     SettingsDivider()
                     var sliderValue by remember { mutableFloatStateOf(autoFetchInterval.toFloat()) }
+                    val haptics = LocalHapticFeedback.current
+                    val tickCount = 6 + 2
+                    var lastTickIndex by remember { mutableIntStateOf(-1) }
+                    val tickIndex = ((((sliderValue - 15f) / 105f) * (tickCount - 1)).roundToInt()).coerceIn(0, tickCount - 1)
+                    LaunchedEffect(tickIndex) {
+                        if (tickIndex != lastTickIndex) {
+                            haptics.feedback(HapticFeedbackType.TextHandleMove)
+                            lastTickIndex = tickIndex
+                        }
+                    }
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -412,8 +438,8 @@ fun SettingsScreen(
                     description = if (webServerEnabled) stringResource(R.string.desc_webserver_running)
                                  else stringResource(R.string.desc_webserver),
                     icon = Icons.Default.Lan,
-                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                     trailing = { ExpressiveSwitch(checked = webServerEnabled, onCheckedChange = onToggleWebServer) },
                     onClick = onToggleWebServer
                 )

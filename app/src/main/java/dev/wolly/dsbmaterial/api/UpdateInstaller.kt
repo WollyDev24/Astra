@@ -9,13 +9,13 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
 
-object DevBuildInstaller {
-    private const val TAG = "DevBuildInstaller"
+object UpdateInstaller {
+    private const val TAG = "UpdateInstaller"
 
     suspend fun downloadApk(context: Context, apkUrl: String): File? = withContext(Dispatchers.IO) {
         try {
             val dir = File(context.cacheDir, "apk").apply { mkdirs() }
-            val apkFile = File(dir, "astra-dev.apk")
+            val apkFile = File(dir, "astra-update.apk")
             val response = DSBNetwork.client.newCall(
                 Request.Builder()
                     .url(apkUrl)
@@ -33,7 +33,7 @@ object DevBuildInstaller {
             response.close()
             apkFile
         } catch (e: Exception) {
-            Log.e(TAG, "Dev APK download failed", e)
+            Log.e(TAG, "APK download failed", e)
             null
         }
     }

@@ -43,6 +43,7 @@ class DataStoreManager(private val context: Context) {
         val WEB_SERVER_ENABLED = booleanPreferencesKey("web_server_enabled")
         val AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
         val UPDATE_CHANNEL = stringPreferencesKey("update_channel")
+        val HAPTICS = booleanPreferencesKey("haptics")
         val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
     }
 
@@ -72,6 +73,7 @@ class DataStoreManager(private val context: Context) {
     val webServerEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[WEB_SERVER_ENABLED] ?: false }
     val autoUpdateCheckFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }
     val updateChannelFlow: Flow<String> = context.dataStore.data.map { it[UPDATE_CHANNEL] ?: "stable" }
+    val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[HAPTICS] ?: true }
     val setupCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[SETUP_COMPLETED] ?: false }
 
     suspend fun saveCredentials(username: String, password: String, className: String) {
@@ -175,6 +177,10 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun saveUpdateChannel(channel: String) {
         context.dataStore.edit { it[UPDATE_CHANNEL] = channel }
+    }
+
+    suspend fun saveHapticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[HAPTICS] = enabled }
     }
 
     suspend fun saveSetupCompleted(completed: Boolean) {
