@@ -1,0 +1,64 @@
+name: Dev Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: dev-build
+  cancel-in-progress: true
+
+jobs:
+  dev-build:
+    name: Build signed dev APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Install Android SDK platform
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMANAGER" ] || SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" --install "platforms;android-36.1" "build-tools;36.1.0" >/dev/null || true
+          fi
+
+      - name: Set up signing config
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          printf 'storeFile=%s/keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+
+      - name: Build dev APK
+        run: |
+          VERSION_CODE=$((1000 + ${{ github.run_number }}))
+          VERSION_NAME="2.1.0-dev.${{ github.run_number }}"
+          ./gradlew assembleDev -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" --full-stacktrace
+
+      - name: Upload dev APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: astra-dev
+          path: app/build/outputs/apk/dev/*.apk
+          if-no-files-found: error
+          retention-days: 30
