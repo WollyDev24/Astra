@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.JavaNetCookieJar
@@ -207,31 +209,36 @@ class DSBMobileAPI(private val username: String, private val password: String, p
         val htmlPlans = plans.filter { it.isHtml }
 
         val entries = coroutineScope {
+            // Fetch at most 4 plans concurrently so accounts with many plan pages don't
+            // spawn unbounded parallel HTTP requests + HTML parses on every refresh.
+            val gate = Semaphore(4)
             htmlPlans.map { plan ->
                 async {
-                    try {
-                        val request = Request.Builder().url(plan.url).build()
-                        val response = client.newCall(request).execute()
-                        if (!response.isSuccessful) return@async emptyList()
-                        
-                        val contentType = response.header("Content-Type", "")
-                        if (contentType?.contains("image") == true) return@async emptyList()
+                    gate.withPermit {
+                        try {
+                            val request = Request.Builder().url(plan.url).build()
+                            val response = client.newCall(request).execute()
+                            if (!response.isSuccessful) return@withPermit emptyList()
+                            
+                            val contentType = response.header("Content-Type", "")
+                            if (contentType?.contains("image") == true) return@withPermit emptyList()
 
-                        val bytes = response.body?.bytes() ?: return@async emptyList()
-                        
-                        var html: String? = null
-                        for (encoding in listOf("utf-8", "cp1252", "iso-8859-1", "latin-1")) {
-                            try {
-                                val decoder = charset(encoding).newDecoder()
-                                html = decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
-                                break
-                            } catch (e: Exception) { continue }
+                            val bytes = response.body?.bytes() ?: return@withPermit emptyList()
+                            
+                            var html: String? = null
+                            for (encoding in listOf("utf-8", "cp1252", "iso-8859-1", "latin-1")) {
+                                try {
+                                    val decoder = charset(encoding).newDecoder()
+                                    html = decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+                                    break
+                                } catch (e: Exception) { continue }
+                            }
+                            
+                            if (html != null) parsePlanHtml(html, classFilter) else emptyList()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to fetch plan ${plan.url}", e)
+                            emptyList()
                         }
-                        
-                        if (html != null) parsePlanHtml(html, classFilter) else emptyList()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to fetch plan ${plan.url}", e)
-                        emptyList()
                     }
                 }
             }.awaitAll().flatten()

@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -48,35 +49,35 @@ class DataStoreManager(private val context: Context) {
         val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
     }
 
-    val usernameFlow: Flow<String?> = context.dataStore.data.map { it[USERNAME] }
-    val passwordFlow: Flow<String?> = context.dataStore.data.map { it[PASSWORD] }
-    val classNameFlow: Flow<String?> = context.dataStore.data.map { it[CLASS_NAME] }
-    val swapDataFlow: Flow<Boolean> = context.dataStore.data.map { it[SWAP_DATA] ?: true }
-    val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { it[DYNAMIC_COLOR] ?: true }
-    val amoledModeFlow: Flow<Boolean> = context.dataStore.data.map { it[AMOLED_MODE] ?: false }
-    val sortPeriodFlow: Flow<Boolean> = context.dataStore.data.map { it[SORT_PERIOD] ?: true }
-    val archiveFlow: Flow<String?> = context.dataStore.data.map { it[ARCHIVE] }
-    val themeIndexFlow: Flow<Int> = context.dataStore.data.map { it[THEME_INDEX] ?: 0 }
-    val navHiddenFlow: Flow<Boolean> = context.dataStore.data.map { it[NAV_HIDDEN] ?: true }
-    val selectedClassesFlow: Flow<String?> = context.dataStore.data.map { it[SELECTED_CLASSES] }
-    val useCustomFontFlow: Flow<Boolean> = context.dataStore.data.map { it[USE_CUSTOM_FONT] ?: true }
-    val fontWeightFlow: Flow<Float> = context.dataStore.data.map { it[FONT_WEIGHT] ?: 400f }
-    val fontWidthFlow: Flow<Float> = context.dataStore.data.map { it[FONT_WIDTH] ?: 100f }
-    val fontOpszFlow: Flow<Float> = context.dataStore.data.map { it[FONT_OPSZ] ?: 14f }
-    val fontSlntFlow: Flow<Float> = context.dataStore.data.map { it[FONT_SLNT] ?: 0f }
-    val fontGradFlow: Flow<Float> = context.dataStore.data.map { it[FONT_GRAD] ?: 0f }
-    val fontRondFlow: Flow<Float> = context.dataStore.data.map { it[FONT_ROND] ?: 100f }
-    val autoFetchEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_FETCH_ENABLED] ?: false }
-    val autoFetchIntervalFlow: Flow<Int> = context.dataStore.data.map { it[AUTO_FETCH_INTERVAL] ?: 30 }
-    val notificationsEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: false }
-    val customServerUrlFlow: Flow<String?> = context.dataStore.data.map { it[CUSTOM_SERVER_URL] }
-    val cachedEntriesFlow: Flow<String?> = context.dataStore.data.map { it[CACHED_ENTRIES] }
-    val lastUpdatedFlow: Flow<Long> = context.dataStore.data.map { it[LAST_UPDATED] ?: 0L }
-    val webServerEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[WEB_SERVER_ENABLED] ?: false }
-    val autoUpdateCheckFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }
-    val updateChannelFlow: Flow<String> = context.dataStore.data.map { it[UPDATE_CHANNEL] ?: "stable" }
-    val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[HAPTICS] ?: true }
-    val setupCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[SETUP_COMPLETED] ?: false }
+    val usernameFlow: Flow<String?> = context.dataStore.data.map { it[USERNAME] }.distinctUntilChanged()
+    val passwordFlow: Flow<String?> = context.dataStore.data.map { it[PASSWORD] }.distinctUntilChanged()
+    val classNameFlow: Flow<String?> = context.dataStore.data.map { it[CLASS_NAME] }.distinctUntilChanged()
+    val swapDataFlow: Flow<Boolean> = context.dataStore.data.map { it[SWAP_DATA] ?: true }.distinctUntilChanged()
+    val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { it[DYNAMIC_COLOR] ?: true }.distinctUntilChanged()
+    val amoledModeFlow: Flow<Boolean> = context.dataStore.data.map { it[AMOLED_MODE] ?: false }.distinctUntilChanged()
+    val sortPeriodFlow: Flow<Boolean> = context.dataStore.data.map { it[SORT_PERIOD] ?: true }.distinctUntilChanged()
+    val archiveFlow: Flow<String?> = context.dataStore.data.map { it[ARCHIVE] }.distinctUntilChanged()
+    val themeIndexFlow: Flow<Int> = context.dataStore.data.map { it[THEME_INDEX] ?: 0 }.distinctUntilChanged()
+    val navHiddenFlow: Flow<Boolean> = context.dataStore.data.map { it[NAV_HIDDEN] ?: true }.distinctUntilChanged()
+    val selectedClassesFlow: Flow<String?> = context.dataStore.data.map { it[SELECTED_CLASSES] }.distinctUntilChanged()
+    val useCustomFontFlow: Flow<Boolean> = context.dataStore.data.map { it[USE_CUSTOM_FONT] ?: true }.distinctUntilChanged()
+    val fontWeightFlow: Flow<Float> = context.dataStore.data.map { it[FONT_WEIGHT] ?: 400f }.distinctUntilChanged()
+    val fontWidthFlow: Flow<Float> = context.dataStore.data.map { it[FONT_WIDTH] ?: 100f }.distinctUntilChanged()
+    val fontOpszFlow: Flow<Float> = context.dataStore.data.map { it[FONT_OPSZ] ?: 14f }.distinctUntilChanged()
+    val fontSlntFlow: Flow<Float> = context.dataStore.data.map { it[FONT_SLNT] ?: 0f }.distinctUntilChanged()
+    val fontGradFlow: Flow<Float> = context.dataStore.data.map { it[FONT_GRAD] ?: 0f }.distinctUntilChanged()
+    val fontRondFlow: Flow<Float> = context.dataStore.data.map { it[FONT_ROND] ?: 100f }.distinctUntilChanged()
+    val autoFetchEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_FETCH_ENABLED] ?: false }.distinctUntilChanged()
+    val autoFetchIntervalFlow: Flow<Int> = context.dataStore.data.map { it[AUTO_FETCH_INTERVAL] ?: 30 }.distinctUntilChanged()
+    val notificationsEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: false }.distinctUntilChanged()
+    val customServerUrlFlow: Flow<String?> = context.dataStore.data.map { it[CUSTOM_SERVER_URL] }.distinctUntilChanged()
+    val cachedEntriesFlow: Flow<String?> = context.dataStore.data.map { it[CACHED_ENTRIES] }.distinctUntilChanged()
+    val lastUpdatedFlow: Flow<Long> = context.dataStore.data.map { it[LAST_UPDATED] ?: 0L }.distinctUntilChanged()
+    val webServerEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[WEB_SERVER_ENABLED] ?: false }.distinctUntilChanged()
+    val autoUpdateCheckFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }.distinctUntilChanged()
+    val updateChannelFlow: Flow<String> = context.dataStore.data.map { it[UPDATE_CHANNEL] ?: "stable" }.distinctUntilChanged()
+    val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[HAPTICS] ?: true }.distinctUntilChanged()
+    val setupCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[SETUP_COMPLETED] ?: false }.distinctUntilChanged()
 
     suspend fun saveCredentials(username: String, password: String, className: String) {
         context.dataStore.edit { settings ->
@@ -171,6 +172,10 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun saveLastUpdated(timestamp: Long) {
         context.dataStore.edit { it[LAST_UPDATED] = timestamp }
+    }
+
+    suspend fun saveCacheSnapshot(json: String, timestamp: Long) {
+        context.dataStore.edit { it[CACHED_ENTRIES] = json; it[LAST_UPDATED] = timestamp }
     }
 
     suspend fun saveWebServerEnabled(enabled: Boolean) {

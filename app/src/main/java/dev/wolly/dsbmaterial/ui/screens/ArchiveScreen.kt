@@ -55,7 +55,9 @@ fun ArchiveScreen(
             }
         }
     } else {
-        val grouped = entries.groupBy { it.day }
+        // Grouping the whole archive on every recomposition (e.g. toggling a setting)
+        // re-visits every entry; cache it until the archive actually changes.
+        val grouped = remember(entries) { entries.groupBy { it.day } }
         LazyColumn(
             modifier = modifier,
             contentPadding = PaddingValues(

@@ -427,7 +427,7 @@ fun DSBApp(viewModel: MainViewModel) {
                                 2 -> ArchiveScreen(
                                     entries = archiveEntries,
                                     isRoomFirst = isRoomFirst,
-                                    onRemoveGroup = { entries -> entries.forEach { viewModel.removeFromArchive(it) } },
+                                    onRemoveGroup = { entries -> viewModel.removeFromArchive(entries) },
                                     onOpenCalendar = { showCalendar = true }
                                 )
                                 3 -> SettingsScreen(

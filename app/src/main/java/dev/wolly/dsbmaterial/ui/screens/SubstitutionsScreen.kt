@@ -81,12 +81,7 @@ fun DayList(entries: List<SubstitutionEntry>, onDayClick: (String, Rect) -> Unit
     val dayCounts = allDayData.second
     val allEntriesByDay = allDayData.third
     val classesByDay = remember(allDayData) {
-        val filtered = entries.filter { day ->
-            val lowerDay = day.day.lowercase()
-            !lowerDay.contains("samstag") && !lowerDay.contains("sonntag") &&
-            !lowerDay.contains("saturday") && !lowerDay.contains("sunday")
-        }
-        filtered.groupBy { it.day }.mapValues { (_, dayEntries) ->
+        allDayData.third.mapValues { (_, dayEntries) ->
             dayEntries.map { it.className }.filter { it.isNotEmpty() }.distinct()
         }
     }

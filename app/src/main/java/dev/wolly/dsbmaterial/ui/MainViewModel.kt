@@ -69,6 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
             "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"
         )
+        private val ENTRIES_TYPE = object : TypeToken<List<SubstitutionEntry>>() {}.type
     }
     
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
@@ -310,8 +311,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun loadCachedEntries(): List<SubstitutionEntry>? {
         val json = dataStoreManager.cachedEntriesFlow.first() ?: return null
         if (json.isNullOrEmpty()) return null
-        val type = object : TypeToken<List<SubstitutionEntry>>() {}.type
-        val entries: List<SubstitutionEntry> = gson.fromJson(json, type)
+        val entries: List<SubstitutionEntry> = gson.fromJson(json, ENTRIES_TYPE)
         return entries.takeIf { it.isNotEmpty() }
     }
 
@@ -319,8 +319,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (entries.isEmpty()) return
         val now = System.currentTimeMillis()
         withContext(Dispatchers.IO) {
-            dataStoreManager.saveCachedEntries(gson.toJson(entries))
-            dataStoreManager.saveLastUpdated(now)
+            dataStoreManager.saveCacheSnapshot(gson.toJson(entries), now)
         }
         _lastUpdated.value = now
         _isOffline.value = false
@@ -331,8 +330,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dataStoreManager.archiveFlow.distinctUntilChanged().collect { json ->
                 if (!json.isNullOrEmpty()) {
                     val entries = withContext(Dispatchers.IO) {
-                        val type = object : TypeToken<List<SubstitutionEntry>>() {}.type
-                        val parsed: List<SubstitutionEntry> = gson.fromJson(json, type)
+                        val parsed: List<SubstitutionEntry> = gson.fromJson(json, ENTRIES_TYPE)
                         sortArchive(parsed)
                     }
                     _archive.value = entries
@@ -371,47 +369,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return Long.MAX_VALUE
     }
 
+    private fun lessonNumber(entry: SubstitutionEntry): Int =
+        entry.lesson.filter { c -> c.isDigit() }.toIntOrNull() ?: 999
+
+    private fun dedupKey(entry: SubstitutionEntry): String =
+        entry.day + "|" + entry.lesson + "|" + entry.subject + "|" + entry.room + "|" + entry.art + "|" + entry.text
+
     private fun sortArchive(entries: List<SubstitutionEntry>): List<SubstitutionEntry> {
-        return entries.sortedWith(
-            compareBy<SubstitutionEntry> { parseDaySortKey(it.day) }
-                .thenBy { it.lesson.filter { c -> c.isDigit() }.toIntOrNull() ?: 999 }
-        )
+        if (entries.size < 2) return entries
+        // Compute the sort keys once per entry instead of re-parsing the day string
+        // (and re-filtering lesson digits) on every comparator invocation.
+        val keyed = entries.map { it to (parseDaySortKey(it.day) to lessonNumber(it)) }
+        return keyed.sortedWith(
+            compareBy<Pair<SubstitutionEntry, Pair<Long, Int>>> { it.second.first }
+                .thenBy { it.second.second }
+        ).map { it.first }
     }
 
     fun archiveSubstitutions(entries: List<SubstitutionEntry>? = null) {
         val toArchive = entries ?: lastSuccessEntries
-        if (toArchive.isNotEmpty()) {
-            viewModelScope.launch {
-                val sortedArchive = withContext(Dispatchers.IO) {
-                    val newArchive = (toArchive + _archive.value).distinctBy {
-                        it.day + it.lesson + it.subject + it.room + it.art + it.text
-                    }
-                    val sorted = sortArchive(newArchive)
-                    dataStoreManager.saveArchive(gson.toJson(sorted))
-                    sorted
+        if (toArchive.isEmpty()) return
+        viewModelScope.launch {
+            val existing = _archive.value
+            if (existing.isEmpty()) {
+                val sorted = withContext(Dispatchers.IO) {
+                    sortArchive(toArchive).also { dataStoreManager.saveArchive(gson.toJson(it)) }
                 }
-                _archive.value = sortedArchive
+                _archive.value = sorted
                 updateWidget()
+                return@launch
             }
+            val (updated, changed) = withContext(Dispatchers.IO) {
+                val existingKeys = HashSet<String>(existing.size * 2)
+                existing.forEach { existingKeys.add(dedupKey(it)) }
+                val newEntries = toArchive.filter { existingKeys.add(dedupKey(it)) }
+                if (newEntries.isEmpty()) {
+                    null to false
+                } else {
+                    val sorted = sortArchive(newEntries + existing)
+                    dataStoreManager.saveArchive(gson.toJson(sorted))
+                    sorted to true
+                }
+            }
+            if (!changed || updated == null) return@launch
+            _archive.value = updated
+            updateWidget()
         }
     }
 
     fun removeFromArchive(entry: SubstitutionEntry) {
-        viewModelScope.launch {
-            val newArchive = withContext(Dispatchers.IO) {
-                val filtered = _archive.value.filter { it != entry }
-                dataStoreManager.saveArchive(gson.toJson(filtered))
-                filtered
-            }
-            _archive.value = newArchive
-            updateWidget()
-        }
+        removeFromArchive(listOf(entry))
     }
 
     fun removeFromArchive(entries: List<SubstitutionEntry>) {
         viewModelScope.launch {
             val newArchive = withContext(Dispatchers.IO) {
-                val filtered = _archive.value.filter { it !in entries }
+                val toRemove = entries.toSet()
+                val filtered = _archive.value.filter { it !in toRemove }
                 dataStoreManager.saveArchive(gson.toJson(filtered))
                 filtered
             }
@@ -844,7 +858,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
 
-                val deduped = filtered.distinctBy { it.day + it.lesson + it.subject + it.room + it.art + it.text }
+                val deduped = filtered.distinctBy { dedupKey(it) }
                 lastSuccessEntries = deduped
                 _uiState.value = UiState.Success(sortEntries(deduped))
                 saveCache(deduped)
@@ -879,7 +893,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            val deduped = filtered.distinctBy { it.day + it.lesson + it.subject + it.room + it.art + it.text }
+            val deduped = filtered.distinctBy { dedupKey(it) }
             saveCache(deduped)
             archiveSubstitutions(deduped)
             ensureLoadingFeel()
@@ -913,11 +927,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun sortEntries(entries: List<SubstitutionEntry>): List<SubstitutionEntry> {
-        val byDay = compareBy<SubstitutionEntry> { parseDaySortKey(it.day) }
-        if (!sortByPeriod.value) return entries.sortedWith(byDay)
-        return entries.sortedWith(
-            byDay.thenBy { it.lesson.filter { c -> c.isDigit() }.toIntOrNull() ?: 999 }
-        )
+        if (entries.size < 2) return entries
+        // Compute sort keys once per entry so the day string and lesson are not
+        // re-parsed on every comparator invocation (O(n log n) allocations → O(n)).
+        val keyed = entries.map { it to (parseDaySortKey(it.day) to lessonNumber(it)) }
+        val sorted = if (sortByPeriod.value) {
+            keyed.sortedWith(
+                compareBy<Pair<SubstitutionEntry, Pair<Long, Int>>> { it.second.first }
+                    .thenBy { it.second.second }
+            )
+        } else {
+            keyed.sortedWith(compareBy<Pair<SubstitutionEntry, Pair<Long, Int>>> { it.second.first })
+        }
+        return sorted.map { it.first }
     }
 
     override fun onCleared() {
