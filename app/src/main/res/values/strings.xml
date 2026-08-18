@@ -166,19 +166,6 @@
     <string name="desc_haptics">Vibrate on taps, drags and sliders</string>
     <string name="action_clear_filter">Clear filter</string>
     <string name="action_remove_class">Remove class</string>
-
-    <string name="title_setup">Welcome to Astra</string>
-    <string name="desc_setup_intro">Sign in with your DSBmobile account to pull your substitutions, then fine-tune everything on the next screen.</string>
-    <string name="title_setup_customize">Make it yours</string>
-    <string name="desc_setup_customize_intro">Tweak how substitutions look and behave. The preview below updates live.</string>
-    <string name="label_setup_preferences">Preferences</string>
-    <string name="label_setup_preview_title">Your substitutions preview</string>
-    <string name="desc_setup_preview_intro">This is the first substitution found for your class. Toggle the swap to switch Room and Type values.</string>
-    <string name="desc_preview_placeholder">Sample entry shown</string>
-    <string name="action_finish_setup">Finish</string>
-    <string name="action_skip_setup">Skip for now</string>
-    <string name="label_auto_update_check">Automatic Update Check</string>
-    <string name="desc_auto_update_check">Check for updates on startup</string>
     <string name="label_day">Day</string>
     <string name="label_field_class">Class</string>
     <string name="label_cover">Cover teacher</string>

@@ -40,9 +40,7 @@ sealed class UiState {
     data class Success(val entries: List<SubstitutionEntry>) : UiState()
     data class Error(val message: String) : UiState()
     object NeedsLogin : UiState()
-    object NeedsSetup : UiState()
     data class SelectingClass(val classes: List<String>, val u: String, val p: String) : UiState()
-    data class SetupPreview(val entries: List<SubstitutionEntry>) : UiState()
 }
 
 enum class UpdateCheckStatus { Idle, Checking, UpToDate, Available, Error }
@@ -175,7 +173,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastSuccessEntries: List<SubstitutionEntry> = emptyList()
     private var lastRawEntries: List<SubstitutionEntry> = emptyList()
     private var isDemoMode = false
-    private var setupInProgress = false
     private var appOpenTime = 0L
     private val minLoadingDurationMs = 1800L
     private val minUpdateLoadDurationMs = 3000L
@@ -668,11 +665,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val className = dataStoreManager.classNameFlow.first() ?: ""
             if (className.isEmpty()) {
-                if (setupInProgress) {
-                    _uiState.value = UiState.NeedsSetup
-                } else {
-                    _uiState.value = UiState.NeedsLogin
-                }
+                _uiState.value = UiState.NeedsLogin
             } else {
                 openSettings()
             }
@@ -690,8 +683,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val className = dataStoreManager.classNameFlow.first() ?: ""
 
             if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
-                val completed = dataStoreManager.setupCompletedFlow.first()
-                _uiState.value = if (completed) UiState.NeedsLogin else UiState.NeedsSetup
+                _uiState.value = UiState.NeedsLogin
             } else if (className.isEmpty()) {
                 fetchClasses(username, password)
             } else {
@@ -702,38 +694,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun login(username: String, password: String) {
         isDemoMode = false
-        setupInProgress = false
-        lastRawEntries = emptyList()
-        DSBNetwork.resetSession()
-        viewModelScope.launch {
-            dataStoreManager.saveSetupCompleted(true)
-            fetchClasses(username, password)
-        }
-    }
-
-    fun loginFromSetup(username: String, password: String) {
-        isDemoMode = false
-        setupInProgress = true
         lastRawEntries = emptyList()
         DSBNetwork.resetSession()
         viewModelScope.launch {
             fetchClasses(username, password)
-        }
-    }
-
-    fun skipSetup() {
-        setupInProgress = false
-        viewModelScope.launch {
-            dataStoreManager.saveSetupCompleted(true)
-            _uiState.value = UiState.NeedsLogin
-        }
-    }
-
-    fun finishSetup() {
-        setupInProgress = false
-        viewModelScope.launch {
-            dataStoreManager.saveSetupCompleted(true)
-            _uiState.value = UiState.Success(sortEntries(lastSuccessEntries))
         }
     }
 
@@ -746,10 +710,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loginDemo() {
         isDemoMode = true
-        setupInProgress = false
         _uiState.value = UiState.Loading
         viewModelScope.launch {
-            dataStoreManager.saveSetupCompleted(true)
             delay(1000)
             val demoEntries = listOf(
                 SubstitutionEntry("Montag", "Vertretung", "10a", "1 - 2", "Mathematik", "R101", "", "", "Lehrer krank", ""),
@@ -898,11 +860,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             archiveSubstitutions(deduped)
             ensureLoadingFeel()
             lastSuccessEntries = deduped
-            _uiState.value = if (setupInProgress) {
-                UiState.SetupPreview(sortEntries(deduped))
-            } else {
-                UiState.Success(sortEntries(deduped))
-            }
+            _uiState.value = UiState.Success(sortEntries(deduped))
         } catch (e: DSBAuthException) {
             ensureLoadingFeel()
             showLoginError(getApplication<Application>().getString(R.string.msg_login_failed))

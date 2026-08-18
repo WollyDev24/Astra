@@ -154,19 +154,6 @@
     <string name="desc_haptics">Bei Taps, Drags und Schiebereglern vibrieren</string>
     <string name="action_clear_filter">Filter löschen</string>
     <string name="action_remove_class">Klasse entfernen</string>
-
-    <string name="title_setup">Willkommen bei Astra</string>
-    <string name="desc_setup_intro">Melde dich mit deinem DSBmobile-Konto an, um deine Vertretungen zu laden, und passe auf der nächsten Seite alles an.</string>
-    <string name="title_setup_customize">Mach es zu deinem</string>
-    <string name="desc_setup_customize_intro">Passe an, wie Vertretungen aussehen und sich verhalten. Die Vorschau unten aktualisiert sich live.</string>
-    <string name="label_setup_preferences">Einstellungen</string>
-    <string name="label_setup_preview_title">Vorschau deiner Vertretungen</string>
-    <string name="desc_setup_preview_intro">Das ist die erste gefundene Vertretung für deine Klasse. Schalte den Tauscher um, um Raum- und Typ-Werte zu vertauschen.</string>
-    <string name="desc_preview_placeholder">Beispieleintrag wird angezeigt</string>
-    <string name="action_finish_setup">Fertig</string>
-    <string name="action_skip_setup">Jetzt überspringen</string>
-    <string name="label_auto_update_check">Automatische Update-Prüfung</string>
-    <string name="desc_auto_update_check">Beim Start nach Updates suchen</string>
     <string name="label_day">Tag</string>
     <string name="label_field_class">Klasse</string>
     <string name="label_cover">Vertretungslehrer</string>

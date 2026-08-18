@@ -46,7 +46,6 @@ class DataStoreManager(private val context: Context) {
         val AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
         val UPDATE_CHANNEL = stringPreferencesKey("update_channel")
         val HAPTICS = booleanPreferencesKey("haptics")
-        val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
     }
 
     val usernameFlow: Flow<String?> = context.dataStore.data.map { it[USERNAME] }.distinctUntilChanged()
@@ -77,7 +76,6 @@ class DataStoreManager(private val context: Context) {
     val autoUpdateCheckFlow: Flow<Boolean> = context.dataStore.data.map { it[AUTO_UPDATE_CHECK] ?: true }.distinctUntilChanged()
     val updateChannelFlow: Flow<String> = context.dataStore.data.map { it[UPDATE_CHANNEL] ?: "stable" }.distinctUntilChanged()
     val hapticsFlow: Flow<Boolean> = context.dataStore.data.map { it[HAPTICS] ?: true }.distinctUntilChanged()
-    val setupCompletedFlow: Flow<Boolean> = context.dataStore.data.map { it[SETUP_COMPLETED] ?: false }.distinctUntilChanged()
 
     suspend fun saveCredentials(username: String, password: String, className: String) {
         context.dataStore.edit { settings ->
@@ -192,10 +190,6 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun saveHapticsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[HAPTICS] = enabled }
-    }
-
-    suspend fun saveSetupCompleted(completed: Boolean) {
-        context.dataStore.edit { it[SETUP_COMPLETED] = completed }
     }
 
     suspend fun clearCredentials() {

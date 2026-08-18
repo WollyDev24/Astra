@@ -215,7 +215,7 @@ fun DSBApp(viewModel: MainViewModel) {
 
     val showNavCondition = true
 
-    BackHandler(enabled = showSheet || overlayActive || showProfile || uiState is UiState.SelectingClass || uiState is UiState.SetupPreview || selectedTab != 0) {
+    BackHandler(enabled = showSheet || overlayActive || showProfile || uiState is UiState.SelectingClass || selectedTab != 0) {
         if (showProfile) {
             showProfile = false
         } else if (showSheet) {
@@ -245,8 +245,6 @@ fun DSBApp(viewModel: MainViewModel) {
             shareCardDay = null
         } else if (uiState is UiState.SelectingClass) {
             viewModel.cancelClassSelection()
-        } else if (uiState is UiState.SetupPreview) {
-            viewModel.finishSetup()
         } else {
             viewModel.setTab(0)
         }
@@ -597,8 +595,6 @@ fun DSBApp(viewModel: MainViewModel) {
                 onLoginDemo = viewModel::loginDemo,
                 customServerUrl = customServerUrl,
                 onSetCustomServerUrl = viewModel::setCustomServerUrl,
-                onSkipSetup = viewModel::skipSetup,
-                onFinishSetup = viewModel::finishSetup,
                 showUpdates = showUpdates,
                 updateState = updateState,
                 updateChannel = updateChannel,
@@ -832,12 +828,10 @@ fun OverlayContent(
     onLoginDemo: () -> Unit,
     customServerUrl: String? = null,
     onSetCustomServerUrl: (String) -> Unit = {},
-    onSkipSetup: () -> Unit = {},
-    onFinishSetup: () -> Unit = {},
     viewModel: MainViewModel
 ) {
     androidx.compose.animation.AnimatedVisibility(
-        visible = showThemePicker || showAbout || showDebug || showCalendar || showUpdates || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.NeedsSetup || uiState is UiState.Loading || uiState is UiState.SelectingClass || uiState is UiState.SetupPreview,
+        visible = showThemePicker || showAbout || showDebug || showCalendar || showUpdates || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.Loading || uiState is UiState.SelectingClass,
         enter = fadeIn(tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)),
         exit = fadeOut(tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
     ) {
@@ -899,15 +893,6 @@ fun OverlayContent(
                 }
             }
             uiState is UiState.NeedsLogin -> LoginScreen(onLogin = onLogin, onLoginDemo = onLoginDemo, customServerUrl = customServerUrl, onSetCustomServerUrl = onSetCustomServerUrl)
-            uiState is UiState.NeedsSetup -> SetupScreen(
-                viewModel = viewModel,
-                onSkip = onSkipSetup,
-                customServerUrl = customServerUrl
-            )
-            uiState is UiState.SetupPreview -> SetupPreviewScreen(
-                viewModel = viewModel,
-                entries = uiState.entries
-            )
         }
     }
 }
