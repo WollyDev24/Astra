@@ -170,6 +170,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateState = MutableStateFlow(UpdateState())
     val updateState: StateFlow<UpdateState> = _updateState
 
+    private val _showFirstLaunchUpdate = MutableStateFlow(false)
+    val showFirstLaunchUpdate: StateFlow<Boolean> = _showFirstLaunchUpdate
+
     private var lastSuccessEntries: List<SubstitutionEntry> = emptyList()
     private var lastRawEntries: List<SubstitutionEntry> = emptyList()
     private var isDemoMode = false
@@ -222,6 +225,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 checkForUpdates()
             }
         }
+        viewModelScope.launch {
+            if (!dataStoreManager.updateCheckShownFlow.first()) {
+                _showFirstLaunchUpdate.value = true
+                checkForUpdates(UpdateChannel.STABLE)
+            }
+        }
     }
 
     fun toggleHaptics() {
@@ -251,6 +260,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 update = update
             )
+        }
+    }
+
+    fun dismissFirstLaunchUpdate() {
+        viewModelScope.launch {
+            dataStoreManager.saveUpdateCheckShown(true)
+            _showFirstLaunchUpdate.value = false
         }
     }
 

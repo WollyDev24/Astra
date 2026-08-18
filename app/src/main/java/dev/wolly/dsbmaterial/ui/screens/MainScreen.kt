@@ -116,6 +116,7 @@ fun DSBApp(viewModel: MainViewModel) {
     val password by viewModel.password.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val updateChannel by viewModel.updateChannel.collectAsState()
+    val showFirstLaunchUpdate by viewModel.showFirstLaunchUpdate.collectAsState()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
     val haptics = LocalHapticFeedback.current
 
@@ -211,7 +212,7 @@ fun DSBApp(viewModel: MainViewModel) {
 
     val isTablet = isExpandedScreen()
 
-    val overlayActive = showCalendar || showThemePicker || showAbout || showDebug || showUpdates || shareCardDay != null
+    val overlayActive = showCalendar || showThemePicker || showAbout || showDebug || showUpdates || showFirstLaunchUpdate || shareCardDay != null
 
     val showNavCondition = true
 
@@ -239,6 +240,8 @@ fun DSBApp(viewModel: MainViewModel) {
             showAbout = false
         } else if (showUpdates) {
             showUpdates = false
+        } else if (showFirstLaunchUpdate) {
+            viewModel.dismissFirstLaunchUpdate()
         } else if (showDebug) {
             showDebug = false
         } else if (shareCardDay != null) {
@@ -596,6 +599,7 @@ fun DSBApp(viewModel: MainViewModel) {
                 customServerUrl = customServerUrl,
                 onSetCustomServerUrl = viewModel::setCustomServerUrl,
                 showUpdates = showUpdates,
+                showFirstLaunchUpdates = showFirstLaunchUpdate,
                 updateState = updateState,
                 updateChannel = updateChannel,
                 onSelectChannel = viewModel::setUpdateChannel,
@@ -798,6 +802,8 @@ fun OverlayContent(
     showAbout: Boolean,
     showDebug: Boolean,
     showCalendar: Boolean,
+    showUpdates: Boolean = false,
+    showFirstLaunchUpdates: Boolean = false,
     uiState: UiState,
     themeIndex: Int,
     dynamicColor: Boolean,
@@ -806,7 +812,6 @@ fun OverlayContent(
     isRoomFirst: Boolean,
     calendarSelectedDay: String?,
     shareCardDay: String? = null,
-    showUpdates: Boolean = false,
     updateState: UpdateState = UpdateState(),
     updateChannel: UpdateChannel = UpdateChannel.STABLE,
     onSelectChannel: (UpdateChannel) -> Unit = {},
@@ -831,7 +836,7 @@ fun OverlayContent(
     viewModel: MainViewModel
 ) {
     androidx.compose.animation.AnimatedVisibility(
-        visible = showThemePicker || showAbout || showDebug || showCalendar || showUpdates || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.Loading || uiState is UiState.SelectingClass,
+        visible = showThemePicker || showAbout || showDebug || showCalendar || showUpdates || showFirstLaunchUpdates || shareCardDay != null || uiState is UiState.NeedsLogin || uiState is UiState.Loading || uiState is UiState.SelectingClass,
         enter = fadeIn(tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)),
         exit = fadeOut(tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
     ) {
@@ -864,6 +869,14 @@ fun OverlayContent(
                     onInstall = onInstall,
                     onBack = onCloseUpdates,
                     viewModel = viewModel
+                )
+            }
+            showFirstLaunchUpdates -> PredictiveBackHost(onBack = viewModel::dismissFirstLaunchUpdate) {
+                FirstLaunchUpdateScreen(
+                    updateState = updateState,
+                    onInstall = onInstall,
+                    onRetry = { viewModel.checkForUpdates(UpdateChannel.STABLE) },
+                    onSkip = viewModel::dismissFirstLaunchUpdate
                 )
             }
             showThemePicker -> PredictiveBackHost(onBack = onCloseThemePicker) {

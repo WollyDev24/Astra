@@ -62,6 +62,7 @@
     <string name="msg_dev_available">Dev build available</string>
     <string name="desc_dev_available">Build from %1$s</string>
     <string name="action_install">Install</string>
+    <string name="action_skip">Skip</string>
     <string name="msg_downloading_build">Downloading build…</string>
     <string name="msg_update_install_error">Could not download the update</string>
     <string name="action_expand">Show more</string>
