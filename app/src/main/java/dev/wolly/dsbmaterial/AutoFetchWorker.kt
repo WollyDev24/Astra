@@ -63,9 +63,13 @@ class AutoFetchWorker(
             }
 
             if (newArchive.size != lastKnown.size) {
+                val lastKnownKeys = HashSet<String>(lastKnown.size * 2)
+                lastKnown.forEach { lastKnownKeys.add(dedupKey(it)) }
+                val newEntries = deduped.filter { lastKnownKeys.add(dedupKey(it)) }
+
                 dataStoreManager.saveArchive(gson.toJson(newArchive))
-                if (newArchive.size > lastKnown.size) {
-                    sendNotification(newArchive.size - lastKnown.size)
+                if (newEntries.isNotEmpty()) {
+                    sendNotification(newEntries)
                 }
             }
 
@@ -77,7 +81,7 @@ class AutoFetchWorker(
         }
     }
 
-    private fun sendNotification(newCount: Int) {
+    private fun sendNotification(newEntries: List<SubstitutionEntry>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     applicationContext,
@@ -96,16 +100,60 @@ class AutoFetchWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(applicationContext, DSBApp.CHANNEL_ID)
+        val context = applicationContext
+        val firstLine = notificationLine(context, newEntries.first())
+        val summary = if (newEntries.size > 1) {
+            context.getString(R.string.notif_summary_multi, firstLine, newEntries.size - 1)
+        } else {
+            firstLine
+        }
+
+        val builder = NotificationCompat.Builder(context, DSBApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_widget_calendar)
-            .setContentTitle(applicationContext.getString(R.string.notif_title))
-            .setContentText(applicationContext.getString(R.string.notif_text, newCount))
+            .setContentTitle(context.getString(R.string.notif_title, newEntries.size))
+            .setContentText(summary)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
-            .build()
 
-        NotificationManagerCompat.from(applicationContext).notify(NOTIFICATION_ID, notification)
+        if (newEntries.size > 1) {
+            val bigText = buildString {
+                newEntries.forEachIndexed { index, entry ->
+                    if (index > 0) append('\n')
+                    append(notificationLine(context, entry))
+                }
+            }
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+        }
+
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+    }
+
+    private fun dedupKey(entry: SubstitutionEntry): String =
+        entry.day + "|" + entry.lesson + "|" + entry.subject + "|" + entry.room + "|" + entry.art + "|" + entry.text
+
+    private fun notificationLine(context: Context, entry: SubstitutionEntry): String {
+        val day = entry.day.substringBefore(',').trim()
+        val lesson = if (entry.lesson.isNotEmpty()) {
+            context.getString(R.string.format_notif_lesson, entry.lesson)
+        } else null
+        val subjectPart = when {
+            entry.art.isNotEmpty() && entry.subject.isNotEmpty() -> "${entry.subject} (${entry.art})"
+            entry.subject.isNotEmpty() -> entry.subject
+            entry.art.isNotEmpty() -> entry.art
+            else -> "—"
+        }
+        val room = if (entry.room.isNotEmpty()) {
+            context.getString(R.string.format_notif_room, entry.room)
+        } else null
+        val parts = listOfNotNull(lesson, subjectPart, room)
+        return buildString {
+            if (day.isNotEmpty()) {
+                append(day)
+                append(": ")
+            }
+            append(parts.joinToString(" – "))
+        }
     }
 
     companion object {

@@ -126,8 +126,11 @@
     <string name="label_preview_font_body">Franz jagt im komplett verwahrlosten Taxi quer durch Bayern</string>
     <string name="channel_name">Vertretungsbenachrichtigungen</string>
     <string name="channel_desc">Benachrichtigungen bei neuen Vertretungseinträgen</string>
-    <string name="notif_title">Neue Vertretungen</string>
+    <string name="notif_title">%1$d neue Vertretungen</string>
     <string name="notif_text">%1$d neue Einträge gefunden</string>
+    <string name="notif_summary_multi">%1$s (+%2$d weitere)</string>
+    <string name="format_notif_lesson">%1$s. Stunde</string>
+    <string name="format_notif_room">Raum %1$s</string>
     <string name="label_auto_fetch">Automatisch laden</string>
     <string name="desc_auto_fetch">Regelmäßig auf neue Vertretungen prüfen</string>
     <string name="label_notifications">Benachrichtigungen</string>
@@ -171,6 +174,7 @@
     <string name="label_note">Anmerkung</string>
 
     <string name="home_no_entries">Noch keine Vertretungen verfügbar</string>
+    <string name="home_week_overview">Diese Woche</string>
     <string name="home_retry">Wiederholen</string>
     <string name="home_last_updated">Zuletzt aktualisiert %1$s</string>
     <string name="home_offline">Offline</string>

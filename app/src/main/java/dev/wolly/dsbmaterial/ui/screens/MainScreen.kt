@@ -399,7 +399,12 @@ fun DSBApp(viewModel: MainViewModel) {
                                         lastUpdated = lastUpdated,
                                         isOffline = isOffline,
                                         onRefresh = { viewModel.fetchData() },
-                                        onRetry = { viewModel.fetchData() }
+                                        onRetry = { viewModel.fetchData() },
+                                        onDayTap = { day ->
+                                            selectedDay = day
+                                            cardRect = Rect.Zero
+                                            showSheet = true
+                                        }
                                     )
                                     1 -> {
                                         val currentUiState = uiState

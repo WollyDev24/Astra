@@ -138,8 +138,11 @@
     <string name="label_preview_font_body">The quick brown fox jumps over the lazy dog</string>
     <string name="channel_name">Substitution Alerts</string>
     <string name="channel_desc">Notifications for new substitution entries</string>
-    <string name="notif_title">New Substitutions</string>
+    <string name="notif_title">%1$d new substitutions</string>
     <string name="notif_text">%1$d new entries found</string>
+    <string name="notif_summary_multi">%1$s (+%2$d more)</string>
+    <string name="format_notif_lesson">period %1$s</string>
+    <string name="format_notif_room">room %1$s</string>
     <string name="label_auto_fetch">Auto-Fetch</string>
     <string name="desc_auto_fetch">Periodically check for new substitutions</string>
     <string name="label_notifications">Notifications</string>
@@ -183,6 +186,7 @@
     <string name="label_note">Note</string>
 
     <string name="home_no_entries">No substitutions available yet</string>
+    <string name="home_week_overview">This Week</string>
     <string name="home_retry">Retry</string>
     <string name="home_last_updated">Last updated %1$s</string>
     <string name="home_offline">Offline</string>

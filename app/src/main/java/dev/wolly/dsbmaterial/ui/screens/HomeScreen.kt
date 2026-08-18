@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -41,6 +42,7 @@ fun HomeScreen(
     isOffline: Boolean,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onDayTap: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val schoolEntries = remember(entries) { entries.filter { isSchoolDay(it.day) } }
@@ -55,6 +57,7 @@ fun HomeScreen(
     val nextUpEntries = remember(schoolEntries, nextUpDay) {
         if (nextUpDay == null) emptyList() else schoolEntries.filter { it.day == nextUpDay }
     }
+    val weekDays = remember(schoolEntries) { currentWeekDays(schoolEntries) }
 
     val dayEntries = if (todayEntries.isNotEmpty()) todayEntries else nextUpEntries
     val isToday = todayEntries.isNotEmpty()
@@ -97,6 +100,13 @@ fun HomeScreen(
                 lastUpdated = lastUpdated,
                 isOffline = isOffline,
                 onRefresh = onRefresh
+            )
+        }
+
+        item {
+            WeekOverviewCard(
+                weekDays = weekDays,
+                onDayTap = onDayTap
             )
         }
 
@@ -205,6 +215,124 @@ private fun formatUpdatedTime(timestamp: Long): String {
 }
 
 private data class TodayInfo(val count: Int, val dayName: String)
+
+private data class WeekDay(
+    val dayName: String,
+    val shortName: String,
+    val date: String,
+    val count: Int,
+    val isToday: Boolean
+)
+
+@Composable
+private fun WeekOverviewCard(
+    weekDays: List<WeekDay>,
+    onDayTap: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.home_week_overview),
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                weekDays.forEach { day ->
+                    WeekDayChip(
+                        day = day,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onDayTap(day.dayName) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekDayChip(
+    day: WeekDay,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val containerColor = when {
+        day.isToday -> MaterialTheme.colorScheme.primary
+        day.count > 0 -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+    val contentColor = when {
+        day.isToday -> MaterialTheme.colorScheme.onPrimary
+        day.count > 0 -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = day.shortName,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = contentColor
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (day.count == 0) "–" else day.count.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (day.count == 0) contentColor.copy(alpha = 0.5f) else contentColor
+            )
+        }
+    }
+}
+
+private fun currentWeekDays(schoolEntries: List<SubstitutionEntry>): List<WeekDay> {
+    val cal = Calendar.getInstance()
+    cal.firstDayOfWeek = Calendar.MONDAY
+    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    val dayNames = arrayOf("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag")
+    val shortNames = arrayOf("Mo", "Di", "Mi", "Do", "Fr")
+    val today = todayDateString()
+    return dayNames.indices.map { i ->
+        val dayName = dayNames[i]
+        val date = String.format(
+            "%02d.%02d.%04d",
+            cal.get(Calendar.DAY_OF_MONTH),
+            cal.get(Calendar.MONTH) + 1,
+            cal.get(Calendar.YEAR)
+        )
+        val count = schoolEntries.count { entry ->
+            val lower = entry.day.lowercase()
+            lower.startsWith(dayName.lowercase()) || lower.contains(date)
+        }
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        WeekDay(dayName, shortNames[i], date, count, isToday = date == today)
+    }
+}
 
 private fun isSchoolDay(day: String): Boolean {
     val lower = day.lowercase()
